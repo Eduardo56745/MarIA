@@ -5,3 +5,4 @@ __pycache__/
 database.db
 videos/*.mp4
 CLAUDE.md
+.claude/
