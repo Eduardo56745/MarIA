@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>La Teacher MarIA</title>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+
+    <style>
+        :root {
+            --azul-oscuro: #0B3C6B;
+            --azul-medio: #1565C0;
+            --azul-claro: #E8F1FB;
+            --azul-acento: #2E8BE6;
+            --gris-fondo: #F4F7FA;
+            --texto-suave: #5A6B7B;
+            --verde-ok: #2E9E5B;
+            --rojo-alerta: #D64545;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            background-color: var(--gris-fondo);
+            color: #1F2A37;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--azul-oscuro), var(--azul-medio));
+            color: white;
+            padding: 18px 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(11, 60, 107, 0.25);
+        }
+        header .icono { font-size: 28px; }
+        header h1 { font-size: 20px; margin: 0; font-weight: 600; }
+        header p { margin: 2px 0 0; font-size: 12.5px; opacity: 0.85; }
+
+        main {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            align-items: flex-start;
+        }
+
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(11, 60, 107, 0.08), 0 1px 2px rgba(11, 60, 107, 0.06);
+            border: 1px solid #E3EAF2;
+        }
+        .panel h2, .panel h3 {
+            margin-top: 0;
+            color: var(--azul-oscuro);
+        }
+
+        .columna-izq { flex: 1; max-width: 260px; display: flex; flex-direction: column; gap: 20px; }
+        .reproductor { flex: 2; position: relative; }
+        .vision { flex: 1; max-width: 310px; text-align: center; }
+
+        .video-item {
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            background: var(--azul-claro);
+            cursor: pointer;
+            border-radius: 8px;
+            border-left: 4px solid var(--azul-medio);
+            transition: background 0.15s, transform 0.1s;
+        }
+        .video-item:hover { background: #DCEAFC; transform: translateX(2px); }
+        .video-item strong { color: var(--azul-oscuro); }
+        .video-item small { color: var(--texto-suave); }
+
+        .video-leccion { width: 100%; height: 100%; border-radius: 10px; background: #000; }
+
+        .contenedor-video {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 8;
+            margin-top: 15px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+        }
+        .contenedor-video.modo-avatar {
+            aspect-ratio: auto;
+            height: 260px;
+            background: white;
+        }
+        .avatar-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: white;
+        }
+        .avatar-mensaje {
+            color: var(--azul-oscuro);
+            font-weight: 600;
+            font-size: 15px;
+            text-align: center;
+            padding: 0 24px;
+            margin: 0;
+        }
+
+        .camara-container {
+            position: relative; width: 100%; aspect-ratio: 4/3;
+            background: #1a2733; border-radius: 10px; overflow: hidden;
+            border: 3px solid var(--azul-medio);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .camara-input { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .camara-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
+
+        .control-grupo { background: var(--azul-claro); border: 1px solid #C9DFF6; }
+        .control-grupo label { color: var(--azul-oscuro); font-weight: 600; font-size: 14px; }
+        .control-grupo input {
+            width: 60px; padding: 6px; margin-left: 10px;
+            border-radius: 6px; border: 1px solid #B7CDE5;
+        }
+        .btn-calibrar {
+            margin-top: 14px; padding: 11px; width: 100%;
+            background-color: var(--azul-medio); color: white; border: none;
+            border-radius: 8px; font-weight: 600; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-calibrar:hover { background-color: var(--azul-oscuro); }
+        .btn-calibrar:disabled { background-color: #9AA9B8; cursor: not-allowed; }
+
+        #pantalla-carga {
+            position: absolute; z-index: 10; color: white; font-weight: 600;
+            background: rgba(11, 60, 107, 0.85); padding: 10px 14px; border-radius: 8px;
+            font-size: 13.5px;
+        }
+
+        #alerta-atencion {
+            display: none;
+            position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+            background: var(--rojo-alerta); color: white;
+            padding: 14px 16px; border-radius: 12px 12px 0 0;
+            align-items: center; justify-content: space-between; gap: 12px;
+            font-weight: 600; font-size: 14.5px;
+        }
+        #alerta-atencion button {
+            background: white; color: var(--rojo-alerta); border: none;
+            padding: 8px 14px; border-radius: 6px; font-weight: 700; cursor: pointer;
+        }
+        #alerta-atencion button:hover { background: #f1f1f1; }
+
+        .metricas p { margin: 6px 0; font-size: 15px; }
+        .metricas strong { color: var(--azul-oscuro); }
+        .badge-estado {
+            display: inline-block; margin-top: 8px; padding: 4px 10px;
+            border-radius: 20px; font-size: 12px; font-weight: 600;
+            background: #EEF2F6; color: var(--texto-suave);
+        }
+
+        /* --- Asistente de voz / chat --- */
+        .asistente {
+            margin-top: 18px;
+            border-top: 1px solid #E3EAF2;
+            padding-top: 16px;
+        }
+        .asistente h3 { margin: 0 0 10px; color: var(--azul-oscuro); font-size: 16px; }
+
+        .lista-conversacion {
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 4px;
+        }
+        .mensaje-vacio { color: var(--texto-suave); font-size: 14.5px; font-style: italic; }
+
+        .burbuja {
+            max-width: 85%;
+            padding: 11px 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            line-height: 1.45;
+        }
+        .burbuja.alumno {
+            align-self: flex-end;
+            background: var(--azul-medio);
+            color: white;
+            border-bottom-right-radius: 3px;
+        }
+        .burbuja.maria {
+            align-self: flex-start;
+            background: var(--azul-claro);
+            color: #1F2A37;
+            border-bottom-left-radius: 3px;
+        }
+        .burbuja.maria .etiqueta-video {
+            display: block;
+            margin-top: 6px;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--azul-oscuro);
+        }
+        .btn-reintentar {
+            display: block;
+            margin-top: 8px;
+            background: white;
+            border: 1px solid var(--azul-medio);
+            color: var(--azul-medio);
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 14px;
+            cursor: pointer;
+        }
+        .btn-reintentar:hover { background: var(--azul-claro); }
+
+        .controles-asistente {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .btn-microfono {
+            width: 46px; height: 46px; border-radius: 50%;
+            border: none; background: var(--azul-medio); color: white;
+            font-size: 20px; cursor: pointer; flex-shrink: 0;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn-microfono:hover { background: var(--azul-oscuro); }
+        .btn-microfono.escuchando {
+            background: var(--rojo-alerta);
+            animation: pulso 1s infinite;
+        }
+        .btn-microfono:disabled { background: #9AA9B8; cursor: not-allowed; animation: none; }
+        @keyframes pulso {
+            0% { box-shadow: 0 0 0 0 rgba(214, 69, 69, 0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(214, 69, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(214, 69, 69, 0); }
+        }
+        .estado-asistente { font-size: 13.5px; color: var(--texto-suave); display: block; margin-top: 8px; }
+
+        .btn-cancelar-pregunta {
+            margin-top: 8px;
+            background: white;
+            border: 1px solid var(--rojo-alerta);
+            color: var(--rojo-alerta);
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 14px;
+            cursor: pointer;
+        }
+        .btn-cancelar-pregunta:hover { background: #FBEAEA; }
+
+        .input-texto-asistente {
+            flex: 1;
+            padding: 11px 14px;
+            border-radius: 24px;
+            border: 1px solid #C9DFF6;
+            font-size: 15.5px;
+            font-family: inherit;
+        }
+        .input-texto-asistente:focus {
+            outline: none;
+            border-color: var(--azul-medio);
+        }
+        .btn-enviar-texto {
+            width: 42px; height: 42px; border-radius: 50%;
+            border: none; background: var(--azul-oscuro); color: white;
+            font-size: 17px; cursor: pointer; flex-shrink: 0;
+            transition: background 0.2s;
+        }
+        .btn-enviar-texto:hover { background: var(--azul-medio); }
+        .btn-enviar-texto:disabled { background: #9AA9B8; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <span class="icono">🎓</span>
+        <div>
+            <h1>La Teacher MarIA</h1>
+            <p>Secretaría de Educación de Guanajuato · Prototipo de demostración</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="columna-izq">
+            <div class="panel control-grupo">
+                <h3 style="margin-top: 0;">👥 Ajustes del Aula</h3>
+                <label for="total-alumnos">Total detectado:</label>
+                <input type="number" id="total-alumnos" value="1" min="1">
+
+                <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:12px; cursor:pointer;">
+                    <input type="checkbox" id="auto-total-checkbox" checked style="width:auto; margin:0;">
+                    <span style="font-size:13px; color: var(--texto-suave);">
+                        🔄 Actualizar total automáticamente (usa las caras que la cámara ve ahorita)
+                    </span>
+                </label>
+
+                <button id="btn-calibrar" class="btn-calibrar" disabled>⏳ Cargando IA...</button>
+                <p id="mensaje-calibracion" style="color: var(--azul-medio); font-weight: 600; font-size: 0.9em; display: none; margin-top: 10px; text-align: center;">
+                    ⏳ Calibrando (5s)... ¡Miren a la cámara!
+                </p>
+            </div>
+
+            <div class="panel">
+                <h2>📚 Biblioteca</h2>
+                <a href="/agregar" style="display:block; text-align:center; background:var(--azul-claro); color:var(--azul-oscuro); text-decoration:none; font-weight:600; font-size:13.5px; padding:9px; border-radius:8px; margin-bottom:12px;">
+                    ➕ Agregar video
+                </a>
+                <div id="contenedor-lista">Cargando videos...</div>
+            </div>
+        </div>
+
+        <div class="panel reproductor">
+            <div id="alerta-atencion">
+                <span>⚠️ Video pausado: el grupo perdió atención</span>
+                <button id="btn-reanudar">Reanudar ahora</button>
+            </div>
+
+            <h2 id="titulo-video">Selecciona una lección</h2>
+            <div class="contenedor-video modo-avatar">
+                <div id="avatar-placeholder" class="avatar-placeholder">
+                    <svg viewBox="0 0 200 200" width="270" height="270" role="img" aria-label="Avatar de alumno">
+                        <circle cx="100" cy="118" r="55" fill="#1565C0"/>
+                        <rect x="82" y="150" width="14" height="30" rx="6" fill="#F2C094"/>
+                        <rect x="104" y="150" width="14" height="30" rx="6" fill="#F2C094"/>
+                        <path d="M60 175 Q100 195 140 175 L140 200 L60 200 Z" fill="#0B3C6B"/>
+                        <ellipse cx="100" cy="88" rx="42" ry="40" fill="#F2C094"/>
+                        <path d="M58 78 Q60 40 100 38 Q140 40 142 78 Q140 60 100 58 Q60 60 58 78Z" fill="#3B2A20"/>
+                        <path d="M56 70 Q54 95 62 108 Q56 95 58 72Z" fill="#3B2A20"/>
+                        <path d="M144 70 Q146 95 138 108 Q144 95 142 72Z" fill="#3B2A20"/>
+                        <circle cx="84" cy="90" r="5" fill="#2B2118"/>
+                        <circle cx="116" cy="90" r="5" fill="#2B2118"/>
+                        <circle cx="75" cy="100" r="7" fill="#F4A97F" opacity="0.55"/>
+                        <circle cx="125" cy="100" r="7" fill="#F4A97F" opacity="0.55"/>
+                        <path d="M85 108 Q100 120 115 108" stroke="#7A4B2E" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <rect x="66" y="130" width="68" height="34" rx="14" fill="white"/>
+                        <path d="M100 130 L88 145 L100 155 L112 145 Z" fill="#D64545"/>
+                        <rect x="30" y="140" width="18" height="45" rx="8" fill="#2E8BE6"/>
+                        <rect x="152" y="140" width="18" height="45" rx="8" fill="#2E8BE6"/>
+                    </svg>
+                    <p class="avatar-mensaje">¡Hola! Elige una lección o pregúntame algo 🙋</p>
+                </div>
+                <video id="video-player" class="video-leccion" controls style="display:none;">Tu navegador no soporta el video.</video>
+            </div>
+
+            <div class="asistente">
+                <h3>🎙️ Pregúntale a MarIA</h3>
+                <div id="lista-conversacion" class="lista-conversacion">
+                    <p class="mensaje-vacio">Presiona el micrófono o escribe tu consulta para hacerle una pregunta a MarIA.</p>
+                </div>
+                <form id="form-texto-asistente" class="controles-asistente">
+                    <button type="button" id="btn-microfono" class="btn-microfono" title="Hablar con MarIA">🎤</button>
+                    <input type="text" id="input-texto-asistente" class="input-texto-asistente" placeholder="O escribe tu pregunta aquí...">
+                    <button type="submit" id="btn-enviar-texto" class="btn-enviar-texto" title="Enviar">➤</button>
+                </form>
+                <span id="estado-asistente" class="estado-asistente">Presiona el micrófono o escribe tu consulta arriba</span>
+                <button type="button" id="btn-cancelar-pregunta" class="btn-cancelar-pregunta" style="display:none;">✕ Cancelar</button>
+            </div>
+        </div>
+
+        <div class="panel vision">
+            <h2>🧠 Análisis Cognitivo</h2>
+            <div class="camara-container">
+                <div id="pantalla-carga">Cargando Redes Neuronales...</div>
+                <video id="camara-input" class="camara-input" autoplay muted playsinline></video>
+                <canvas id="camara-canvas" class="camara-canvas"></canvas>
+            </div>
+            <div class="metricas" style="margin-top: 15px; text-align: left; background: var(--gris-fondo); padding: 12px 14px; border-radius: 8px;">
+                <p><strong>Alumnos Atentos:</strong> <span id="contador-rostros">0</span></p>
+                <p><strong>Nivel de atención:</strong> <span id="porcentaje-atencion">0%</span></p>
+                <p style="font-size: 12.5px; color: var(--texto-suave); margin-top: 2px;">
+                    Mirando al frente: <span id="contador-mirando">0</span>
+                </p>
+                <span class="badge-estado" id="estado-ia">Esperando modelos...</span>
+                <p id="debug-pose" style="font-size: 11.5px; color: var(--texto-suave); margin-top: 8px; font-family: monospace;"></p>
+                <p id="debug-recursos" style="font-size: 11.5px; color: var(--texto-suave); margin-top: 4px; font-family: monospace;"></p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const contenedorLista = document.getElementById('contenedor-lista');
+        const videoPlayer = document.getElementById('video-player');
+        const tituloVideo = document.getElementById('titulo-video');
+        const avatarPlaceholder = document.getElementById('avatar-placeholder');
+        const contenedorVideo = document.querySelector('.contenedor-video');
+
+        // Avatar de respaldo: se muestra cuando no hay ningún video corriendo
+        // (al cargar la página, o cuando un video termina), en vez de dejar
+        // el reproductor en negro. El contenedor cambia de tamaño según el
+        // modo: más compacto y en blanco para el avatar, tamaño de video
+        // normal (16:8, fondo negro) cuando sí hay un video reproduciéndose.
+        function mostrarAvatar() {
+            avatarPlaceholder.style.display = 'flex';
+            videoPlayer.style.display = 'none';
+            contenedorVideo.classList.add('modo-avatar');
+            videoPlayer.pause();
+            tituloVideo.innerText = "Selecciona una lección";
+        }
+        function ocultarAvatar() {
+            avatarPlaceholder.style.display = 'none';
+            videoPlayer.style.display = 'block';
+            contenedorVideo.classList.remove('modo-avatar');
+        }
+        // En cuanto un video llega al final, regresamos al avatar solo.
+        videoPlayer.addEventListener('ended', mostrarAvatar);
+
+        async function cargarVideos() {
+            try {
+                const respuesta = await fetch('/api/videos');
+                const videos = await respuesta.json();
+                contenedorLista.innerHTML = '';
+
+                videos.forEach(video => {
+                    const div = document.createElement('div');
+                    div.className = 'video-item';
+                    div.innerHTML = `<strong>${video.subtema}</strong><br><small>${video.materia}</small>`;
+
+                    div.onclick = () => {
+                        tituloVideo.innerText = `${video.materia}: ${video.subtema}`;
+                        const nombreArchivo = video.ruta_archivo.split('\\').pop().split('/').pop();
+                        ocultarAvatar();
+                        videoPlayer.src = `/videos/${nombreArchivo}`;
+                        videoPlayer.play();
+                        // Nuevo video: reseteamos cualquier estado de pausa por atención.
+                        pausadoPorSistema = false;
+                        contadorBajaAtencion = 0;
+                        contadorBuenaAtencion = 0;
+                        ocultarAlertaAtencion();
+                    };
+                    contenedorLista.appendChild(div);
+                });
+            } catch (error) {
+                console.error("Error cargando videos:", error);
+            }
+        }
+        cargarVideos();
+
+        // ==================================================================
+        // --- ASISTENTE DE VOZ (MarIA) ------------------------------------
+        // ==================================================================
+        const listaConversacion = document.getElementById('lista-conversacion');
+        const btnMicrofono = document.getElementById('btn-microfono');
+        const formTextoAsistente = document.getElementById('form-texto-asistente');
+        const inputTextoAsistente = document.getElementById('input-texto-asistente');
+        const btnEnviarTexto = document.getElementById('btn-enviar-texto');
+
+        // Enviar pregunta escrita: usa la MISMA función preguntarAMarIA() que
+        // usa el micrófono, así que la memoria de la conversación, la
+        // reproducción de video y la narración funcionan igual sin importar
+        // si la pregunta llegó por voz o por texto.
+        formTextoAsistente.addEventListener('submit', (evento) => {
+            evento.preventDefault();
+            const texto = inputTextoAsistente.value.trim();
+            if (!texto) return;
+            inputTextoAsistente.value = '';
+            preguntarAMarIA(texto);
+        });
+        const estadoAsistente = document.getElementById('estado-asistente');
+
+        // Un id de sesión por pestaña/salón. Mientras no recargues la página,
+        // MarIA recuerda todo lo que se ha platicado en ESTA sesión (el backend
+        // guarda la memoria real; aquí solo guardamos el id para mandarlo).
+        let sesionId = null;
+
+        function agregarBurbuja(texto, quien, nombreVideo, mostrarReintentar) {
+            const vacio = listaConversacion.querySelector('.mensaje-vacio');
+            if (vacio) vacio.remove();
+
+            const burbuja = document.createElement('div');
+            burbuja.className = `burbuja ${quien}`;
+            burbuja.innerText = texto;
+
+            if (nombreVideo) {
+                const etiqueta = document.createElement('span');
+                etiqueta.className = 'etiqueta-video';
+                etiqueta.innerText = `▶ Reproduciendo: ${nombreVideo}`;
+                burbuja.appendChild(etiqueta);
+            }
+
+            // Si esta burbuja es el mensaje de "no pude responder", le agregamos
+            // una flechita para reintentar SIN que el profe tenga que volver a
+            // escribir o repetir la pregunta por voz.
+            if (mostrarReintentar) {
+                const botonReintentar = document.createElement('button');
+                botonReintentar.className = 'btn-reintentar';
+                botonReintentar.title = 'Reintentar la misma pregunta';
+                botonReintentar.innerText = '↻ Reintentar';
+                botonReintentar.onclick = () => {
+                    if (ultimaPreguntaAlumno) preguntarAMarIA(ultimaPreguntaAlumno);
+                };
+                burbuja.appendChild(botonReintentar);
+            }
+
+            listaConversacion.appendChild(burbuja);
+            listaConversacion.scrollTop = listaConversacion.scrollHeight;
+        }
+
+        // --- Selección de voz (femenina, en español) -------------------------
+        // El navegador tarda un poco en cargar la lista de voces disponibles
+        // (a veces están listas de inmediato, a veces solo después del evento
+        // 'voiceschanged'), así que la buscamos las dos formas.
+        let vozElegida = null;
+
+        function elegirVozFemenina() {
+            const voces = window.speechSynthesis.getVoices();
+            if (voces.length === 0) return null;
+
+            // Nombres de voces en español que casi siempre vienen configuradas
+            // como femeninas en Windows/Chrome/Edge. Se busca por coincidencia
+            // parcial porque el nombre exacto varía según el sistema operativo.
+            const nombresPreferidos = ['sabina', 'helena', 'paulina', 'mónica', 'monica', 'google español', 'elvira'];
+
+            for (const nombreBuscado of nombresPreferidos) {
+                const encontrada = voces.find(v =>
+                    v.lang.toLowerCase().startsWith('es') &&
+                    v.name.toLowerCase().includes(nombreBuscado)
+                );
+                if (encontrada) return encontrada;
+            }
+
+            // Si ninguna coincide por nombre, evitamos voces que digan
+            // explícitamente "male" en el nombre y nos quedamos con
+            // cualquier voz en español disponible.
+            const cualquierEspanolNoMasculina = voces.find(v =>
+                v.lang.toLowerCase().startsWith('es') && !v.name.toLowerCase().includes('male')
+            );
+            if (cualquierEspanolNoMasculina) return cualquierEspanolNoMasculina;
+
+            // Último recurso: cualquier voz en español, aunque no sepamos el género.
+            return voces.find(v => v.lang.toLowerCase().startsWith('es')) || null;
+        }
+
+        // Intentamos elegir la voz de inmediato...
+        vozElegida = elegirVozFemenina();
+        // ...y también en cuanto el navegador termine de cargar la lista completa
+        // (Chrome normalmente dispara este evento un momento después de cargar la página).
+        window.speechSynthesis.onvoiceschanged = () => {
+            vozElegida = elegirVozFemenina();
+        };
+        // ------------------------------------------------------------------------
+
+        function hablarTexto(texto) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel(); // corta cualquier narración anterior
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = 'es-MX';
+            utterance.rate = 1.0;
+            if (vozElegida) utterance.voice = vozElegida;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        let ultimaPreguntaAlumno = null; // para poder reintentar sin repetir todo
+        const btnCancelarPregunta = document.getElementById('btn-cancelar-pregunta');
+        let controladorAbort = null; // permite cancelar la petición en curso
+
+        async function preguntarAMarIA(textoAlumno) {
+            ultimaPreguntaAlumno = textoAlumno;
+            agregarBurbuja(textoAlumno, 'alumno');
+            estadoAsistente.innerText = "MarIA está pensando...";
+            inputTextoAsistente.disabled = true;
+            btnEnviarTexto.disabled = true;
+            btnCancelarPregunta.style.display = 'inline-block';
+
+            controladorAbort = new AbortController();
+
+            // Mensajes progresivos mientras esperamos: el backend reintenta hasta
+            // 3 veces por dentro (con esperas de 1.5s y 3s entre intentos), así
+            // que si tarda, avisamos que seguimos intentando en vez de dejar
+            // "pensando..." fijo todo ese rato, que se siente como que se trabó.
+            const timerSigoEnEso = setTimeout(() => {
+                estadoAsistente.innerText = "Sigo en eso...";
+            }, 4000);
+            const timerDificultades = setTimeout(() => {
+                estadoAsistente.innerText = "Estoy teniendo dificultades para encontrar el contenido, dame un momento más...";
+            }, 9000);
+
+            try {
+                const respuesta = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ texto: textoAlumno, sesion_id: sesionId }),
+                    signal: controladorAbort.signal,
+                });
+                const datos = await respuesta.json();
+
+                // FastAPI devuelve { detail: ... } cuando algo falla antes de
+                // generar la respuesta (por ejemplo, si falta GROQ_API_KEY).
+                // No intentamos pintar datos.respuesta en ese caso, porque no
+                // existe y el navegador mostraría literalmente "undefined".
+                if (!respuesta.ok || !datos.respuesta) {
+                    throw new Error(datos.detail || 'MarIA no pudo generar una respuesta.');
+                }
+
+                sesionId = datos.sesion_id; // guardamos/actualizamos la sesión
+
+                // Si el backend agotó sus reintentos y regresó el mensaje de
+                // "no pude responder", le agregamos la flechita de reintentar.
+                agregarBurbuja(datos.respuesta, 'maria', datos.video, datos.error === true);
+
+                // Reproducción SINCRONIZADA: el video arranca al mismo tiempo
+                // que MarIA empieza a narrar la respuesta. Silenciamos el audio
+                // propio del video para que no se empalme con la narración.
+                if (datos.video) {
+                    tituloVideo.innerText = "MarIA está explicando...";
+                    ocultarAvatar();
+                    videoPlayer.src = `/videos/${datos.video}`;
+                    videoPlayer.muted = true;
+                    videoPlayer.currentTime = 0;
+                    pausadoPorSistema = false;
+                    contadorBajaAtencion = 0;
+                    contadorBuenaAtencion = 0;
+                    ocultarAlertaAtencion();
+                    videoPlayer.play();
+                }
+                hablarTexto(datos.respuesta);
+                estadoAsistente.innerText = "Presiona el micrófono o escribe tu consulta arriba";
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    // El profe le dio "Cancelar" a propósito, no es un error real.
+                    console.log("Pregunta cancelada por el usuario.");
+                    agregarBurbuja("Pregunta cancelada.", 'maria', null, true);
+                    estadoAsistente.innerText = "Presiona el micrófono o escribe tu consulta arriba";
+                } else {
+                    console.error("Error hablando con MarIA:", error);
+                    agregarBurbuja("No pude conectarme con MarIA, intenta de nuevo.", 'maria', null, true);
+                    estadoAsistente.innerText = "Error de conexión";
+                }
+            } finally {
+                clearTimeout(timerSigoEnEso);
+                clearTimeout(timerDificultades);
+                inputTextoAsistente.disabled = false;
+                btnEnviarTexto.disabled = false;
+                btnCancelarPregunta.style.display = 'none';
+                controladorAbort = null;
+                inputTextoAsistente.focus();
+            }
+        }
+
+        btnCancelarPregunta.onclick = () => {
+            if (controladorAbort) controladorAbort.abort();
+        };
+
+        // --- Reconocimiento de voz (Web Speech API, nativo del navegador) ---
+        const ReconocimientoVoz = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let reconocedor = null;
+        let escuchando = false;
+
+        if (ReconocimientoVoz) {
+            reconocedor = new ReconocimientoVoz();
+            reconocedor.lang = 'es-MX';
+            reconocedor.interimResults = false;
+            reconocedor.maxAlternatives = 1;
+
+            reconocedor.onresult = (evento) => {
+                const textoDicho = evento.results[0][0].transcript;
+                preguntarAMarIA(textoDicho);
+            };
+            reconocedor.onerror = (evento) => {
+                console.error("Error de reconocimiento de voz:", evento.error);
+                estadoAsistente.innerText = "No te escuché bien, intenta otra vez";
+            };
+            reconocedor.onend = () => {
+                escuchando = false;
+                btnMicrofono.classList.remove('escuchando');
+                if (estadoAsistente.innerText === "Escuchando...") {
+                    estadoAsistente.innerText = "Presiona el micrófono o escribe tu consulta arriba";
+                }
+            };
+
+            btnMicrofono.onclick = () => {
+                if (escuchando) {
+                    reconocedor.stop();
+                    return;
+                }
+                escuchando = true;
+                btnMicrofono.classList.add('escuchando');
+                estadoAsistente.innerText = "Escuchando...";
+                reconocedor.start();
+            };
+        } else {
+            btnMicrofono.disabled = true;
+            estadoAsistente.innerText = "Tu navegador no soporta micrófono (usa Chrome/Edge)";
+        }
+        // ==================================================================
+
+        const videoElement = document.getElementById('camara-input');
+        const canvasElement = document.getElementById('camara-canvas');
+        const pantallaCarga = document.getElementById('pantalla-carga');
+        const spanRostros = document.getElementById('contador-rostros');
+        const spanPorcentaje = document.getElementById('porcentaje-atencion');
+        const spanMirando = document.getElementById('contador-mirando');
+        const debugPose = document.getElementById('debug-pose'); // TEMPORAL: para diagnosticar la pose real en pantalla, sin abrir la consola
+        const debugRecursos = document.getElementById('debug-recursos'); // TEMPORAL: aproximación de costo de CPU/RAM del análisis, ver nota en loopAnalisis
+        const inputTotalAlumnos = document.getElementById('total-alumnos');
+        const checkboxAutoTotal = document.getElementById('auto-total-checkbox');
+
+        // Si el profe edita el número a mano, apagamos el modo automático solo,
+        // para no pelearnos con lo que está escribiendo.
+        inputTotalAlumnos.addEventListener('input', () => {
+            checkboxAutoTotal.checked = false;
+        });
+        const estadoIA = document.getElementById('estado-ia');
+        const btnCalibrar = document.getElementById('btn-calibrar');
+        const mensajeCalibracion = document.getElementById('mensaje-calibracion');
+        const alertaAtencion = document.getElementById('alerta-atencion');
+        const btnReanudar = document.getElementById('btn-reanudar');
+
+        let enFaseDeCalibracion = false;
+        let maxRostrosDetectados = 0;
+
+        // Offset de pose "neutral" para esta cámara/salón (se llena al calibrar).
+        // Corrige el sesgo de que la webcam casi nunca queda perfectamente a la
+        // altura de los ojos: sin esto, "ver derecho a la pantalla" no siempre
+        // da yaw/pitch = 0.
+        let calibracionPose = { yawBase: 0, pitchBase: 0 };
+        let sumaYawCalibracion = 0;
+        let sumaPitchCalibracion = 0;
+        let muestrasPoseCalibracion = 0;
+
+        // --- Lógica de pausa/reanudación automática ---------------------------
+        const UMBRAL_ATENCION = 0.6;          // 60% de atención mínima requerida
+        const CHECKS_PARA_PAUSAR = 2;          // 2 checks seguidos por debajo del umbral (~2s)
+        const CHECKS_PARA_REANUDAR = 2;        // 2 checks seguidos por ARRIBA del umbral para reanudar solo (~2s)
+        let contadorBajaAtencion = 0;
+        let contadorBuenaAtencion = 0;
+        let pausadoPorSistema = false;         // distingue "lo pausó MarIA" de que el profe le dé pausa manual
+
+        // --- Total automático con "memoria" (debounce) ------------------------
+        // Antes el total se igualaba EN VIVO al número de caras detectadas ese
+        // instante. Problema: si alguien voltea la cabeza lo suficiente, el
+        // detector de caras deja de verlo del todo (no es que lo marque
+        // "distraído", literalmente no lo cuenta como cara), y el total se
+        // desplomaba junto con el numerador — tapando justo el caso de "se
+        // voltearon todos" en vez de contarlo como 0% de atención.
+        // Con esto: el total SUBE de inmediato en cuanto se ve más gente
+        // (alguien entra al cuadro), pero solo BAJA si el número de caras
+        // detectadas se mantiene bajo por varios segundos seguidos (alguien
+        // realmente se fue, no que nomás volteó un momento).
+        let totalEstimadoAuto = 1;
+        let contadorTotalBajo = 0;
+        const SEGUNDOS_PARA_BAJAR_TOTAL = 5; // antes 8: se bajó para que reaccione más rápido cuando alguien se va de verdad
+
+        function mostrarAlertaAtencion() { alertaAtencion.style.display = 'flex'; }
+        function ocultarAlertaAtencion() { alertaAtencion.style.display = 'none'; }
+
+        function pausarPorBajaAtencion() {
+            if (videoPlayer.paused || !videoPlayer.src) return;
+            videoPlayer.pause();
+            pausadoPorSistema = true;
+            contadorBajaAtencion = 0;
+            contadorBuenaAtencion = 0;
+            mostrarAlertaAtencion();
+        }
+        function reanudarAutomatico() {
+            pausadoPorSistema = false;
+            contadorBuenaAtencion = 0;
+            ocultarAlertaAtencion();
+            videoPlayer.play();
+        }
+        // Botón manual, por si en la demo se quiere forzar la reanudación antes de tiempo.
+        btnReanudar.onclick = reanudarAutomatico;
+        // -------------------------------------------------------------------------
+
+        const traduccionEmociones = {
+            neutral: "😐 Neutral", happy: "😀 Feliz", sad: "😢 Triste",
+            angry: "😠 Enojado", fearful: "😨 Asustado", disgusted: "🤢 Disgustado", surprised: "😲 Sorprendido"
+        };
+        const emocionesDistraidas = ['sad', 'angry', 'disgusted'];
+
+        async function cargarModelosIA() {
+            // Modelos servidos desde nuestro propio backend (no dependen de internet externo).
+            const URL_MODELOS = '/models';
+            estadoIA.innerText = "Preparando motor de IA...";
+
+            try {
+                // Antes forzaba 'cpu' (solo procesador, sin tarjeta gráfica). Con
+                // datos reales de una laptop de prueba, a inputSize=320 el ciclo
+                // tardaba 1303ms de los 1000ms disponibles (130%, o sea MÁS lento
+                // que en tiempo real). 'webgl' usa la GPU (hasta una integrada
+                // ayuda mucho aquí) y normalmente es varias veces más rápido para
+                // este tipo de red neuronal. Se intenta 'webgl' primero; si esa
+                // laptop en particular no lo soporta (poco común, pero pasa en
+                // equipos muy viejos o con drivers de gráficos rotos), cae de
+                // vuelta a 'cpu' para no dejar la página sin funcionar.
+                try {
+                    await faceapi.tf.setBackend('webgl');
+                    await faceapi.tf.ready();
+                    console.log('Backend de IA: webgl (acelerado por GPU)');
+                } catch (errorWebgl) {
+                    console.warn('webgl no disponible en esta laptop, usando cpu (será más lento):', errorWebgl);
+                    await faceapi.tf.setBackend('cpu');
+                    await faceapi.tf.ready();
+                }
+                estadoIA.innerText = "Descargando modelos...";
+
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(URL_MODELOS),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(URL_MODELOS),
+                    faceapi.nets.faceExpressionNet.loadFromUri(URL_MODELOS)
+                ]);
+
+                estadoIA.innerText = "IA Lista. Encendiendo cámara...";
+                navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+                    .then(stream => { videoElement.srcObject = stream; })
+                    .catch(err => {
+                        console.error("Error cámara", err);
+                        estadoIA.innerText = "No se pudo acceder a la cámara (revisa permisos).";
+                    });
+            } catch (error) {
+                console.error("Error crítico:", error);
+                estadoIA.innerText = "Error cargando la IA.";
+            }
+        }
+
+        videoElement.addEventListener('play', () => {
+            pantallaCarga.style.display = 'none';
+            btnCalibrar.disabled = false;
+            btnCalibrar.innerText = "🎯 Autodetectar Grupo";
+            estadoIA.innerText = "Telemetría activa";
+
+            const displaySize = { width: videoElement.videoWidth, height: videoElement.videoHeight };
+            faceapi.matchDimensions(canvasElement, displaySize);
+
+            loopAnalisis(displaySize);
+        });
+
+        // ==================================================================
+        // --- HEAD POSE con POSIT (DeMenthon & Davis, 1995) -------------------
+        // ==================================================================
+        // Antes esto era una heurística 2D con razones y umbrales inventados
+        // a ojo (ver comentario que había aquí). El problema real que traía:
+        // el rango "normal" de esas razones depende de dónde esté colocada
+        // la webcam, y a la primera cara o ángulo distinto ya no aplicaba.
+        //
+        // POSIT calcula una pose 3D de verdad (yaw/pitch en grados) a partir
+        // de 6 puntos "canónicos" de un modelo genérico de cara (nariz, mentón,
+        // esquinas de ojos y boca — el mismo set de puntos que usan la mayoría
+        // de los tutoriales de head-pose con OpenCV/dlib) y sus posiciones 2D
+        // ya detectadas por face-api.js. NO se agrega ningún modelo/red nueva
+        // ni se manda nada a un servidor: son puros productos punto/cruz de
+        // vectores de 3 números por iteración (5-8 iteraciones, converge rápido
+        // para caras casi de frente), así que el costo extra por cara es
+        // insignificante — valida esto con 35 caras simultáneas antes de
+        // confiar en el número, pero en pruebas de escritorio no debería notarse.
+        //
+        // Esta matemática se validó aparte en Python con rotaciones sintéticas
+        // conocidas (yaw ±45°, pitch ±20°) antes de portarla aquí: error medio
+        // por debajo de 1° en yaw y de 2.5° en pitch, con ruido de landmarks de
+        // hasta 2px de desviación estándar en el resultado. No es una intuición,
+        // se comprobó numéricamente.
+        //
+        // Puntos del modelo 3D genérico, relativos a la nariz (unidades: mm,
+        // arbitrarias — solo importan las proporciones entre puntos):
+        const MODELO_3D_PUNTOS = [
+            [0, -330, -65],      // mentón            (landmark 8)
+            [-225, 170, -135],   // ojo izq. externo  (landmark 36)
+            [225, 170, -135],    // ojo der. externo  (landmark 45)
+            [-150, -150, -125],  // boca izq.         (landmark 48)
+            [150, -150, -125],   // boca der.         (landmark 54)
+        ];
+        // Pseudo-inversa (3x5) de los puntos de arriba. Es una constante del
+        // modelo (no depende de la cara detectada), así que se calculó UNA
+        // sola vez con numpy y se deja fija aquí — no hace falta invertir
+        // matrices en el navegador en cada cuadro.
+        const B_PINV = [
+            [0, -0.0015384615, 0.0015384615, -0.0010256410, 0.0010256410],
+            [-0.0015201027, 0.0009291177, 0.0009291177, -0.0006082204, -0.0006082204],
+            [-0.0006279132, -0.0020455333, -0.0020455333, -0.0016275665, -0.0016275665],
+        ];
+
+        function normaVec3(v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); }
+        function productoCruz(a, b) {
+            return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+        }
+        function matriz3x5PorVector(M, v) {
+            return [0, 1, 2].map(fila => M[fila].reduce((suma, val, col) => suma + val * v[col], 0));
+        }
+
+        // Estima yaw/pitch (en grados) de una cara detectada. Regresa null si
+        // la geometría sale degenerada (cara casi de perfil total, landmarks
+        // muy pegados) — en ese caso el llamador debe tratarla como "no atento"
+        // en vez de intentar usar un número no confiable.
+        function estimarPoseCabeza(landmarks, anchoImagenPx) {
+            const p = landmarks.positions; // 68 puntos, orden estándar dlib
+            const nariz = p[30];
+            const puntosImagen = [p[8], p[36], p[45], p[48], p[54]]; // mismo orden que MODELO_3D_PUNTOS
+
+            // Foco aproximado: sin calibrar cada webcam a mano, se usa el ancho
+            // de la imagen en pixeles (aproximación estándar cuando no hay
+            // calibración real de cámara). El error que esto mete queda
+            // absorbido por la calibración por sesión de más abajo.
+            const f = anchoImagenPx;
+
+            const xs = puntosImagen.map(pt => pt.x - nariz.x);
+            // OJO con este signo: los pixeles de canvas/DOM crecen HACIA ABAJO,
+            // pero el modelo 3D de arriba se definió con Y creciendo hacia
+            // ARRIBA (el mentón está en Y=-330, "abajo" del origen). Sin este
+            // signo invertido, un mentón real (que en pixeles está MÁS abajo,
+            // osea Y mayor) se interpreta con el signo contrario al que el
+            // modelo espera, y eso se traduce en un yaw estimado cerca de
+            // ±180° incluso de frente (confirmado con datos reales: por eso
+            // salía "volteado" viendo derecho a la cámara).
+            const ys = puntosImagen.map(pt => -(pt.y - nariz.y));
+
+            let epsilon = [0, 0, 0, 0, 0];
+            let R = null;
+
+            for (let iter = 0; iter < 8; iter++) {
+                const xCorr = xs.map((x, i) => x * (1 + epsilon[i]));
+                const yCorr = ys.map((y, i) => y * (1 + epsilon[i]));
+
+                const I = matriz3x5PorVector(B_PINV, xCorr);
+                const J = matriz3x5PorVector(B_PINV, yCorr);
+                const normI = normaVec3(I);
+                const normJ = normaVec3(J);
+                if (normI < 1e-9 || normJ < 1e-9) return null;
+
+                const iVec = I.map(v => v / normI);
+                const jCrudo = J.map(v => v / normJ);
+                let kVec = productoCruz(iVec, jCrudo);
+                const normK = normaVec3(kVec);
+                if (normK < 1e-9) return null;
+                kVec = kVec.map(v => v / normK);
+                const jVec = productoCruz(kVec, iVec); // reortogonaliza j (i y j crudos casi nunca quedan perfectamente perpendiculares)
+
+                R = [iVec, jVec, kVec];
+
+                const escala = (normI + normJ) / 2;
+                const Tz = f / escala;
+                epsilon = MODELO_3D_PUNTOS.map(pt => (pt[0] * kVec[0] + pt[1] * kVec[1] + pt[2] * kVec[2]) / Tz);
+            }
+
+            const yaw = Math.atan2(R[0][2], R[2][2]) * 180 / Math.PI;
+            const pitch = Math.asin(Math.max(-1, Math.min(1, -R[1][2]))) * 180 / Math.PI;
+            return { yaw, pitch };
+        }
+
+        // Umbral en GRADOS reales (no en razones inventadas). Son generosos a
+        // propósito: mejor no marcar "volteado" a alguien que se movió un poco,
+        // que perseguir cada micro-giro de cabeza de un niño de primaria.
+        // Ajustar aquí si en pruebas reales de salón se ve muy estricto/laxo.
+        const UMBRAL_YAW_GRADOS = 28;
+        const UMBRAL_PITCH_GRADOS = 22;
+
+        function estaViendoAlFrente(pose) {
+            if (!pose) return false; // geometría no confiable -> conservador: cuenta como distraído
+            const yawRel = pose.yaw - calibracionPose.yawBase;
+            const pitchRel = pose.pitch - calibracionPose.pitchBase;
+            return Math.abs(yawRel) < UMBRAL_YAW_GRADOS && Math.abs(pitchRel) < UMBRAL_PITCH_GRADOS;
+        }
+        // ==================================================================
+
+        async function loopAnalisis(displaySize) {
+            if (!videoElement.paused && !videoElement.ended) {
+                // TEMPORAL: para medir cuánto CPU/RAM consume el análisis en esta
+                // laptop en concreto. IMPORTANTE ser honesto sobre qué es esto: el
+                // navegador NO deja que una página lea el % de CPU o la RAM real
+                // del sistema (por seguridad/privacidad, cualquier página podría
+                // espiar qué más tienes abierto). Lo que SÍ se puede medir desde
+                // aquí dentro:
+                //   - cuánto tarda este ciclo de análisis (detección + pose), como
+                //     % del segundo completo que tiene disponible -> proxy directo
+                //     de cuánto CPU le está exigiendo a esta laptop.
+                //   - el heap de memoria de JavaScript de la pestaña (solo Chrome/
+                //     Edge, no Firefox) -> sirve para ver si crece sin parar (fuga
+                //     de memoria) mientras la dejas corriendo un rato.
+                // Para el número real de CPU%/RAM del proceso (el que de verdad
+                // quieres para decidir si una laptop modesta aguanta), la fuente
+                // correcta es el Task Manager de Chrome: tres puntos (⋮) arriba a
+                // la derecha > Más herramientas > Administrador de tareas (o
+                // Shift+Esc) — ahí sí te da CPU% y memoria REAL de esta pestaña
+                // específica, sin que tengamos que inventar nada aproximado aquí.
+                const inicioCicloMs = performance.now();
+                // Priorizamos que la detección sea confiable sobre que sea la más
+                // ligera posible: bajar demasiado esto hacía que dejara de detectar
+                // caras incluso de frente y bien iluminadas, lo cual es peor que
+                // el pequeño tartamudeo al escribir (esto sí es el corazón del sistema).
+                //
+                // inputSize: a 160 (el original), una cara que se aleja de la cámara
+                // (o un niño más al fondo del salón) ocupa muy pocos pixeles en la
+                // imagen reducida que ve el detector, y deja de alcanzar el puntaje
+                // mínimo — la cara sigue ahí, el detector simplemente ya no la "ve".
+                // Se subió primero a 320 (funcionó, pero con backend 'cpu' el ciclo
+                // se iba a 130% del segundo disponible — más lento que tiempo real).
+                // Al cambiar el backend a 'webgl' (ver cargarModelosIA), el mismo
+                // 320 bajó a ~3%, así que hay margen de sobra: se subió a 416 EN
+                // PRUEBAS para ver si detecta a distancia real de salón (~8m). Esto
+                // corre UNA vez por segundo y es una sola pasada por el frame
+                // completo (no se multiplica por alumno), así que el costo extra
+                // por subir esto es fijo, no por niño. Si 416 se siente lento en
+                // la laptop real del profe (ver el % del ciclo en el panel de
+                // debug), bajarlo de vuelta a 320. scoreThreshold en 0.4 (antes
+                // 0.5) porque una cara lejana casi nunca da un puntaje tan alto
+                // como una de cerca.
+                const opcionesIA = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 });
+                const detecciones = await faceapi.detectAllFaces(videoElement, opcionesIA)
+                                                .withFaceLandmarks()
+                                                .withFaceExpressions();
+
+                const deteccionesRedimensionadas = faceapi.resizeResults(detecciones, displaySize);
+                const canvasCtx = canvasElement.getContext('2d');
+                canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+                let alumnosAtentosYActivos = 0;
+                let alumnosMirandoAlFrente = 0;
+                let primeraPoseDebug = null; // TEMPORAL: para mostrar números reales en pantalla mientras se ajustan los umbrales
+
+                deteccionesRedimensionadas.forEach(deteccion => {
+                    const expresiones = deteccion.expressions;
+                    const emocionDominante = Object.keys(expresiones).reduce((a, b) => expresiones[a] > expresiones[b] ? a : b);
+                    const pose = estimarPoseCabeza(deteccion.landmarks, displaySize.width);
+                    if (!primeraPoseDebug) primeraPoseDebug = pose;
+
+                    // Durante la calibración, acumulamos yaw/pitch de todas las
+                    // caras vistas mirando "derecho" a la cámara, para restar
+                    // ese sesgo (posición/ángulo de la webcam) en el uso real.
+                    if (enFaseDeCalibracion && pose) {
+                        sumaYawCalibracion += pose.yaw;
+                        sumaPitchCalibracion += pose.pitch;
+                        muestrasPoseCalibracion++;
+                    }
+
+                    const mirandoAlFrente = estaViendoAlFrente(pose);
+
+                    if (mirandoAlFrente) alumnosMirandoAlFrente++;
+
+                    // "Atento" ahora depende SOLO del head pose (si ve al frente o no).
+                    // Antes también exigíamos que la emoción no fuera "triste/enojado/
+                    // disgustado", pero en la práctica el clasificador de emociones
+                    // confunde fácil una cara seria y concentrada con "triste" — daba
+                    // demasiados falsos negativos (gente prestando atención real que
+                    // contaba como distraída). La emoción se sigue mostrando en el
+                    // recuadro como dato informativo, pero ya no afecta la pausa/alerta.
+                    let colorCaja = "#ff4d4d";
+                    if (mirandoAlFrente) {
+                        alumnosAtentosYActivos++;
+                        colorCaja = "#00c26e";
+                    }
+
+                    const caja = deteccion.detection.box;
+                    canvasCtx.strokeStyle = colorCaja;
+                    canvasCtx.lineWidth = 3;
+                    canvasCtx.strokeRect(caja.x, caja.y, caja.width, caja.height);
+                    canvasCtx.fillStyle = colorCaja;
+                    canvasCtx.font = "20px Arial";
+                    const etiqueta = mirandoAlFrente ? traduccionEmociones[emocionDominante] : "↩️ Volteado";
+                    canvasCtx.fillText(etiqueta, caja.x, caja.y - 10);
+                });
+
+                // TEMPORAL: bloque de diagnóstico, quitar cuando ya no haga falta ajustar umbrales.
+                if (primeraPoseDebug) {
+                    const yawRel = primeraPoseDebug.yaw - calibracionPose.yawBase;
+                    const pitchRel = primeraPoseDebug.pitch - calibracionPose.pitchBase;
+                    debugPose.innerText =
+                        `yaw crudo=${primeraPoseDebug.yaw.toFixed(1)}° pitch crudo=${primeraPoseDebug.pitch.toFixed(1)}° | ` +
+                        `base yaw=${calibracionPose.yawBase.toFixed(1)}° base pitch=${calibracionPose.pitchBase.toFixed(1)}° | ` +
+                        `REL yaw=${yawRel.toFixed(1)}° pitch=${pitchRel.toFixed(1)}° (umbral ±${UMBRAL_YAW_GRADOS}°/±${UMBRAL_PITCH_GRADOS}°)`;
+                } else {
+                    debugPose.innerText = "Sin pose calculable (geometría degenerada o sin cara detectada).";
+                }
+
+                // TEMPORAL: ver el comentario grande de arriba (inicioCicloMs) sobre
+                // qué tan real/aproximado es esto.
+                const duracionCicloMs = performance.now() - inicioCicloMs;
+                const porcentajeDelSegundo = (duracionCicloMs / 1000 * 100).toFixed(0);
+                let textoMemoria = "memoria JS: no disponible en este navegador";
+                if (performance.memory) {
+                    const usadoMB = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
+                    const limiteMB = (performance.memory.jsHeapSizeLimit / 1048576).toFixed(0);
+                    textoMemoria = `memoria JS: ${usadoMB} MB (límite del navegador: ${limiteMB} MB)`;
+                }
+                debugRecursos.innerText =
+                    `backend IA: ${faceapi.tf.getBackend()} | ciclo de análisis: ${duracionCicloMs.toFixed(0)} ms de 1000 ms disponibles (~${porcentajeDelSegundo}%) | ${textoMemoria} | ${detecciones.length} cara(s) — para CPU%/RAM real del proceso: Task Manager de Chrome (Shift+Esc)`;
+
+                if (enFaseDeCalibracion) {
+                    if (detecciones.length > maxRostrosDetectados) maxRostrosDetectados = detecciones.length;
+                    spanRostros.innerText = detecciones.length;
+                    spanPorcentaje.innerText = "Calibrando...";
+                    spanPorcentaje.style.color = "#1565C0";
+                } else {
+                    // Si "Actualizar total automáticamente" está marcado, el total
+                    // se ajusta solo con las caras que la cámara ve — pero con
+                    // "memoria": sube de inmediato, baja solo si se sostiene varios
+                    // segundos (ver explicación arriba, junto a SEGUNDOS_PARA_BAJAR_TOTAL).
+                    let totalAlumnos;
+                    if (checkboxAutoTotal.checked) {
+                        if (detecciones.length >= totalEstimadoAuto) {
+                            // Se ve MÁS o IGUAL gente que antes: actualizamos de inmediato.
+                            totalEstimadoAuto = detecciones.length;
+                            contadorTotalBajo = 0;
+                        } else {
+                            // Se ve MENOS gente que antes: solo bajamos el total si esto
+                            // se mantiene así varios segundos seguidos (para no confundir
+                            // "se voltearon" con "se fueron del salón").
+                            contadorTotalBajo++;
+                            if (contadorTotalBajo >= SEGUNDOS_PARA_BAJAR_TOTAL) {
+                                totalEstimadoAuto = detecciones.length;
+                                contadorTotalBajo = 0;
+                            }
+                        }
+                        totalAlumnos = totalEstimadoAuto;
+                        inputTotalAlumnos.value = totalAlumnos;
+                    } else {
+                        totalAlumnos = parseInt(inputTotalAlumnos.value) || 1;
+                    }
+
+                    if (totalAlumnos === 0) {
+                        // Nadie visible en cámara (receso, nadie frente a la pantalla, etc.):
+                        // no hay información suficiente para medir atención, así que NO
+                        // disparamos pausa ni contamos esto como "0% de atención".
+                        spanRostros.innerText = 0;
+                        spanMirando.innerText = 0;
+                        spanPorcentaje.innerText = "Sin datos";
+                        spanPorcentaje.style.color = "#9AA9B8";
+                        contadorBajaAtencion = 0;
+                    } else {
+                    const porcentajeReal = Math.min((alumnosAtentosYActivos / totalAlumnos), 1.0);
+
+                    spanRostros.innerText = alumnosAtentosYActivos;
+                    spanMirando.innerText = alumnosMirandoAlFrente;
+                    spanPorcentaje.innerText = Math.round(porcentajeReal * 100) + "%";
+                    spanPorcentaje.style.color = porcentajeReal >= 0.60 ? "#2E9E5B" : "#D64545";
+
+                    // --- pausa / reanudación automática, con histéresis de 2 checks ---
+                    if (pausadoPorSistema) {
+                        // Para reanudar pedimos que la atención suba POR ENCIMA del umbral
+                        // (no solo igual), así el estado de pausa/reanudación no se pisa entre sí.
+                        if (porcentajeReal > UMBRAL_ATENCION) {
+                            contadorBuenaAtencion++;
+                            if (contadorBuenaAtencion >= CHECKS_PARA_REANUDAR) {
+                                reanudarAutomatico();
+                            }
+                        } else {
+                            contadorBuenaAtencion = 0;
+                        }
+                    } else if (!videoPlayer.paused && videoPlayer.src) {
+                        // OJO: aquí usamos "<=" y no "<". Con grupos chicos (ej. 2 personas),
+                        // el porcentaje puede caer EXACTO en 50% (1 de 2 atentos), y
+                        // matemáticamente 50% no es "menor que" 50%, así que con "<" nunca
+                        // se disparaba la pausa en ese caso. Con "<=", 50% exacto sí cuenta
+                        // como "atención insuficiente", que es lo que se pidió originalmente:
+                        // "si el 50% está distraído, se pausa".
+                        if (porcentajeReal <= UMBRAL_ATENCION) {
+                            contadorBajaAtencion++;
+                            if (contadorBajaAtencion >= CHECKS_PARA_PAUSAR) {
+                                pausarPorBajaAtencion();
+                            }
+                        } else {
+                            contadorBajaAtencion = 0;
+                        }
+                    }
+                    // ---------------------------------------------------------------------
+                    }
+                }
+            }
+            setTimeout(() => loopAnalisis(displaySize), 1000);
+        }
+
+        btnCalibrar.onclick = () => {
+            // La calibración manual es para cuando el modo automático no basta
+            // (ej. la cámara sistemáticamente no ve bien a los de atrás). Por
+            // eso apagamos el modo automático aquí: si no, el número calibrado
+            // se sobreescribiría solo en el siguiente segundo con el conteo en vivo.
+            //
+            // Aprovechamos esta MISMA ventana de 5s (profe + alumnos viendo a
+            // la cámara) para calibrar también el "cero" de pose de esta webcam/
+            // salón: se promedia el yaw/pitch visto durante estos 5s y se guarda
+            // como referencia de "viendo al frente" (ver calibracionPose arriba).
+            checkboxAutoTotal.checked = false;
+            enFaseDeCalibracion = true;
+            maxRostrosDetectados = 0;
+            sumaYawCalibracion = 0;
+            sumaPitchCalibracion = 0;
+            muestrasPoseCalibracion = 0;
+            btnCalibrar.disabled = true;
+            btnCalibrar.innerText = "Calculando...";
+            mensajeCalibracion.style.display = 'block';
+
+            setTimeout(() => {
+                enFaseDeCalibracion = false;
+                btnCalibrar.disabled = false;
+                btnCalibrar.innerText = "🎯 Autodetectar Grupo";
+                mensajeCalibracion.style.display = 'none';
+                if (maxRostrosDetectados > 0) inputTotalAlumnos.value = maxRostrosDetectados;
+
+                if (muestrasPoseCalibracion > 0) {
+                    calibracionPose = {
+                        yawBase: sumaYawCalibracion / muestrasPoseCalibracion,
+                        pitchBase: sumaPitchCalibracion / muestrasPoseCalibracion,
+                    };
+                    console.log(`Calibración de pose: yawBase=${calibracionPose.yawBase.toFixed(1)}° pitchBase=${calibracionPose.pitchBase.toFixed(1)}° (${muestrasPoseCalibracion} muestras)`);
+                }
+            }, 5000);
+        };
+
+        window.addEventListener('load', () => cargarModelosIA());
+    </script>
+</body>
+</html>

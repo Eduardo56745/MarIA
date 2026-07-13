@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Agregar Video - La Teacher MarIA</title>
+    <style>
+        /* Mismos colores azules que la página principal, para que se vea
+           parte del mismo sistema y no una pantalla aparte. */
+        :root {
+            --azul-oscuro: #0B3C6B;
+            --azul-medio: #1565C0;
+            --azul-claro: #E8F1FB;
+            --gris-fondo: #F4F7FA;
+            --texto-suave: #5A6B7B;
+            --verde-ok: #2E9E5B;
+            --rojo-alerta: #D64545;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            background-color: var(--gris-fondo);
+            color: #1F2A37;
+        }
+        header {
+            background: linear-gradient(135deg, var(--azul-oscuro), var(--azul-medio));
+            color: white;
+            padding: 18px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header h1 { font-size: 20px; margin: 0; font-weight: 600; }
+        header a {
+            color: white; text-decoration: none; font-size: 14px;
+            background: rgba(255,255,255,0.15); padding: 8px 14px; border-radius: 8px;
+        }
+        header a:hover { background: rgba(255,255,255,0.25); }
+
+        main {
+            max-width: 560px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .panel {
+            background: white;
+            padding: 26px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(11, 60, 107, 0.08);
+            border: 1px solid #E3EAF2;
+        }
+        .panel h2 { margin-top: 0; color: var(--azul-oscuro); }
+
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 13.5px;
+            color: var(--azul-oscuro);
+            margin: 14px 0 6px;
+        }
+        input[type="text"], input[type="number"], textarea, input[type="file"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #C9DFF6;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        textarea { resize: vertical; min-height: 70px; }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            background-color: var(--azul-medio);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        button:hover { background-color: var(--azul-oscuro); }
+        button:disabled { background-color: #9AA9B8; cursor: not-allowed; }
+
+        #mensaje-estado {
+            margin-top: 14px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            display: none;
+        }
+        #mensaje-estado.exito { background: #E3F5EA; color: var(--verde-ok); display: block; }
+        #mensaje-estado.error { background: #FBEAEA; color: var(--rojo-alerta); display: block; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📤 Agregar Video</h1>
+        <a href="/">← Volver a la biblioteca</a>
+    </header>
+
+    <main>
+        <div class="panel">
+            <h2>Nuevo video educativo</h2>
+            <p style="color: var(--texto-suave); font-size: 13.5px; margin-top: -6px;">
+                El archivo se guarda en la carpeta de videos y su descripción es lo que
+                MarIA usa para saber de qué trata (la IA no "ve" el video, solo lee esto).
+            </p>
+
+            <form id="form-agregar">
+                <label for="archivo">Archivo de video (.mp4, .webm o .mov)</label>
+                <input type="file" id="archivo" name="archivo" accept=".mp4,.webm,.mov" required>
+
+                <label for="subtema">Tema (obligatorio, es lo que más usa MarIA)</label>
+                <input type="text" id="subtema" name="subtema" placeholder="Ej. Dinosaurios" required>
+
+                <label for="materia">Materia</label>
+                <input type="text" id="materia" name="materia" placeholder="Ej. Ciencias Naturales">
+
+                <label for="grado">Grado</label>
+                <input type="text" id="grado" name="grado" placeholder="Ej. 3ro Primaria">
+
+                <label for="duracion">Duración aproximada (segundos)</label>
+                <input type="number" id="duracion" name="duracion" min="0" placeholder="Ej. 180">
+
+                <label for="descripcion">Descripción (mientras más clara, mejor explica MarIA)</label>
+                <textarea id="descripcion" name="descripcion" placeholder="Ej. Los dinosaurios fueron reptiles que dominaron la Tierra hace millones de años..."></textarea>
+
+                <button type="submit" id="btn-enviar">Guardar video</button>
+            </form>
+
+            <div id="mensaje-estado"></div>
+        </div>
+    </main>
+
+    <script>
+        const formulario = document.getElementById('form-agregar');
+        const botonEnviar = document.getElementById('btn-enviar');
+        const mensajeEstado = document.getElementById('mensaje-estado');
+
+        // Al enviar el formulario, lo mandamos como multipart/form-data
+        // (necesario porque incluye un archivo, no solo texto).
+        formulario.addEventListener('submit', async (evento) => {
+            evento.preventDefault();
+            botonEnviar.disabled = true;
+            botonEnviar.innerText = "Subiendo...";
+            mensajeEstado.style.display = 'none';
+
+            const datosFormulario = new FormData(formulario);
+
+            try {
+                const respuesta = await fetch('/api/videos/agregar', {
+                    method: 'POST',
+                    body: datosFormulario, // el navegador pone el Content-Type solo
+                });
+
+                if (!respuesta.ok) {
+                    const error = await respuesta.json();
+                    throw new Error(error.detail || "Error desconocido");
+                }
+
+                const datos = await respuesta.json();
+                mensajeEstado.className = 'exito';
+                mensajeEstado.innerText = `✅ "${datos.archivo}" se guardó correctamente en el catálogo.`;
+                formulario.reset();
+            } catch (error) {
+                mensajeEstado.className = 'error';
+                mensajeEstado.innerText = `❌ No se pudo guardar: ${error.message}`;
+            } finally {
+                botonEnviar.disabled = false;
+                botonEnviar.innerText = "Guardar video";
+            }
+        });
+    </script>
+</body>
+</html>

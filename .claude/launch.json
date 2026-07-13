@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "MarIA",
+      "runtimeExecutable": "env/Scripts/python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app:app", "--reload"],
+      "port": 8000
+    }
+  ]
+}
