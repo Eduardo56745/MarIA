@@ -29,37 +29,99 @@
         header {
             background: linear-gradient(135deg, var(--azul-oscuro), var(--azul-medio));
             color: white;
-            padding: 18px 28px;
+            padding: 8px 24px;
             display: flex;
             align-items: center;
             gap: 12px;
             box-shadow: 0 2px 8px rgba(11, 60, 107, 0.25);
         }
-        header .icono { font-size: 28px; }
-        header h1 { font-size: 20px; margin: 0; font-weight: 600; }
-        header p { margin: 2px 0 0; font-size: 12.5px; opacity: 0.85; }
+        header h1 { font-size: 21px; margin: 0; font-weight: 700; letter-spacing: 0.2px; line-height: 1.1; }
+        header .subtitulo {
+            display: inline-block;
+            margin-top: 3px;
+            padding: 2px 10px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            font-size: 11.5px;
+            font-weight: 500;
+            line-height: 1.3;
+        }
 
         main {
             display: flex;
-            gap: 20px;
-            padding: 20px;
+            gap: 14px;
+            padding: 8px 12px;
             align-items: flex-start;
         }
 
         .panel {
             background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(11, 60, 107, 0.08), 0 1px 2px rgba(11, 60, 107, 0.06);
+            padding: 14px 16px;
+            border-radius: 10px;
+            box-shadow: 0 1px 2px rgba(11, 60, 107, 0.05);
             border: 1px solid #E3EAF2;
         }
         .panel h2, .panel h3 {
             margin-top: 0;
+            margin-bottom: 8px;
             color: var(--azul-oscuro);
         }
 
-        .columna-izq { flex: 1; max-width: 260px; display: flex; flex-direction: column; gap: 20px; }
-        .reproductor { flex: 2; position: relative; }
+        /* Los paneles secundarios (ajustes, biblioteca, análisis) llevan
+           títulos más chicos y una sombra apenas visible, para que no
+           compitan visualmente con el reproductor, que es el centro de
+           la pantalla. */
+        .vision h2 {
+            font-size: 15px;
+        }
+
+        .columna-izq { flex: 1; max-width: 260px; display: flex; flex-direction: column; gap: 14px; }
+        .reproductor {
+            flex: 2;
+            position: relative;
+            padding: 8px 18px;
+            border-radius: 14px;
+            border-color: #D7E4F2;
+            box-shadow: 0 10px 28px rgba(11, 60, 107, 0.14), 0 2px 8px rgba(11, 60, 107, 0.08);
+            /* Alto atado a la ventana (header + paddings de main), no al
+               contenido. Así, sin importar qué tan grande hagamos al avatar
+               de MarIA, el panel nunca crece más allá de lo que cabe en
+               pantalla: lo que no entra se reparte entre el video/avatar
+               (con su propio tope) y el historial del chat (que ya hace
+               scroll interno), pero el cuadro para escribirle a MarIA
+               nunca se sale de la vista. El valor exacto se ajusta abajo
+               una vez medido el alto real del header + padding de main. */
+            height: calc(100vh - 79px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .fila-titulo-video {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        #titulo-video { font-size: 21px; font-weight: 700; margin: 0; }
+        .btn-cerrar-video {
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: var(--azul-oscuro);
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .btn-cerrar-video:hover { background: #06263F; }
         .vision { flex: 1; max-width: 310px; text-align: center; }
 
         .video-item {
@@ -81,14 +143,22 @@
             position: relative;
             width: 100%;
             aspect-ratio: 16 / 8;
-            margin-top: 15px;
+            margin-top: 8px;
             border-radius: 10px;
             overflow: hidden;
             background: #000;
+            flex-shrink: 1;
+            min-height: 0;
         }
         .contenedor-video.modo-avatar {
             aspect-ratio: auto;
-            height: 260px;
+            /* MarIA es la protagonista: el avatar crece para llenar todo el
+               espacio que le sobre al panel (flex-grow), con un piso para
+               que nunca se vea chiquito y un tope de la mitad de la
+               ventana para siempre dejarle algo de aire al chat de abajo. */
+            flex: 2 1 260px;
+            min-height: 220px;
+            max-height: 50vh;
             background: white;
         }
         .avatar-placeholder {
@@ -101,7 +171,18 @@
             gap: 6px;
             background: white;
         }
+        /* Antes tenía width/height fijos en px (no crecía aunque el
+           contenedor sí). Ahora escala con el contenedor: llena el alto
+           disponible del avatar-placeholder y mantiene su proporción
+           (viewBox 200x220) calculando el ancho solita. */
+        .avatar-svg {
+            flex: 1 1 auto;
+            min-height: 0;
+            width: auto;
+            max-width: 92%;
+        }
         .avatar-mensaje {
+            flex-shrink: 0;
             color: var(--azul-oscuro);
             font-weight: 600;
             font-size: 15px;
@@ -121,6 +202,35 @@
 
         .control-grupo { background: var(--azul-claro); border: 1px solid #C9DFF6; }
         .control-grupo label { color: var(--azul-oscuro); font-weight: 600; font-size: 14px; }
+
+        /* Botón que hace las veces de encabezado desplegable de un panel
+           (Ajustes del Aula, Biblioteca): se ve como un botón largo con una
+           flechita, y al hacer click muestra/oculta el contenido de abajo. */
+        .btn-desplegable {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(11, 60, 107, 0.06);
+            border: 1px solid transparent;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font: inherit;
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--azul-oscuro);
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s;
+        }
+        .btn-desplegable:hover { background: rgba(11, 60, 107, 0.11); }
+        .flecha-desplegable {
+            font-size: 12px;
+            color: var(--texto-suave);
+            transition: transform 0.15s;
+        }
+        .btn-desplegable[aria-expanded="true"] .flecha-desplegable { transform: rotate(180deg); }
+        .contenido-desplegable { margin-top: 12px; }
         .control-grupo input {
             width: 60px; padding: 6px; margin-left: 10px;
             border-radius: 6px; border: 1px solid #B7CDE5;
@@ -162,16 +272,49 @@
             background: #EEF2F6; color: var(--texto-suave);
         }
 
+        .btn-toggle-debug {
+            display: block;
+            margin-top: 8px;
+            background: none;
+            border: 1px solid #C9DFF6;
+            color: var(--texto-suave);
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .btn-toggle-debug:hover { background: var(--azul-claro); color: var(--azul-oscuro); }
+
         /* --- Asistente de voz / chat --- */
         .asistente {
-            margin-top: 18px;
+            margin-top: 8px;
             border-top: 1px solid #E3EAF2;
-            padding-top: 16px;
+            padding-top: 8px;
+            /* Se queda con todo el espacio que el video/avatar no usa.
+               Adentro, solo el historial (lista-conversacion) se encoge o
+               hace scroll; el título, el formulario y el estado de abajo
+               nunca se comprimen, así que el cuadro de texto siempre
+               queda a la vista sin necesidad de bajar con el scroll.
+               flex-basis en 0 (no "auto") a propósito: con "auto" el
+               tamaño "preferido" de este bloque se calculaba a partir del
+               contenido de lista-conversacion (todos los mensajes, aunque
+               hicieran scroll), así que entre más se platicaba con MarIA,
+               más espacio le "robaba" al video y aparecían las franjas
+               negras. Con base 0, el tamaño depende solo del flex-grow
+               (repartido con el video), nunca de cuántos mensajes haya. */
+            flex: 1 1 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
         }
-        .asistente h3 { margin: 0 0 10px; color: var(--azul-oscuro); font-size: 16px; }
+        .asistente h3 { margin: 0 0 6px; color: var(--azul-oscuro); font-size: 16px; flex-shrink: 0; }
 
         .lista-conversacion {
-            max-height: 220px;
+            /* Igual que en .asistente: base 0, no "auto", para que su
+               tamaño no dependa de cuántos mensajes traiga el historial
+               (eso ya lo resuelve el scroll interno). */
+            flex: 1 1 0;
+            min-height: 60px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
@@ -228,7 +371,8 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-top: 12px;
+            margin-top: 8px;
+            flex-shrink: 0;
         }
         .btn-microfono {
             width: 46px; height: 46px; border-radius: 50%;
@@ -247,9 +391,10 @@
             70% { box-shadow: 0 0 0 10px rgba(214, 69, 69, 0); }
             100% { box-shadow: 0 0 0 0 rgba(214, 69, 69, 0); }
         }
-        .estado-asistente { font-size: 13.5px; color: var(--texto-suave); display: block; margin-top: 8px; }
+        .estado-asistente { font-size: 13.5px; color: var(--texto-suave); display: block; margin-top: 6px; flex-shrink: 0; }
 
         .btn-cancelar-pregunta {
+            flex-shrink: 0;
             margin-top: 8px;
             background: white;
             border: 1px solid var(--rojo-alerta);
@@ -314,39 +459,49 @@
 <body>
 
     <header>
-        <span class="icono">🎓</span>
         <div>
-            <h1>La Teacher MarIA</h1>
-            <p>Secretaría de Educación de Guanajuato · Prototipo de demostración</p>
+            <h1>MarIA</h1>
+            <span class="subtitulo">Secretaría de Educación de Guanajuato · Prototipo de demostración</span>
         </div>
     </header>
 
     <main>
         <div class="columna-izq">
             <div class="panel control-grupo">
-                <h3 style="margin-top: 0;">👥 Ajustes del Aula</h3>
-                <label for="total-alumnos">Total detectado:</label>
-                <input type="number" id="total-alumnos" value="1" min="1">
+                <button type="button" class="btn-desplegable" data-target="contenido-ajustes" aria-expanded="false">
+                    <span>👥 Ajustes del Aula</span>
+                    <span class="flecha-desplegable">▾</span>
+                </button>
+                <div style="margin-top:12px;">
+                    <label for="total-alumnos">Total detectado:</label>
+                    <input type="number" id="total-alumnos" value="1" min="1">
+                </div>
+                <div id="contenido-ajustes" class="contenido-desplegable" style="display:none;">
+                    <label style="display:flex; align-items:center; gap:8px; font-weight:normal; cursor:pointer;">
+                        <input type="checkbox" id="auto-total-checkbox" checked style="width:auto; margin:0;">
+                        <span style="font-size:13px; color: var(--texto-suave);">
+                            🔄 Actualizar total automáticamente (usa las caras que la cámara ve ahorita)
+                        </span>
+                    </label>
 
-                <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-top:12px; cursor:pointer;">
-                    <input type="checkbox" id="auto-total-checkbox" checked style="width:auto; margin:0;">
-                    <span style="font-size:13px; color: var(--texto-suave);">
-                        🔄 Actualizar total automáticamente (usa las caras que la cámara ve ahorita)
-                    </span>
-                </label>
-
-                <button id="btn-calibrar" class="btn-calibrar" disabled>⏳ Cargando IA...</button>
-                <p id="mensaje-calibracion" style="color: var(--azul-medio); font-weight: 600; font-size: 0.9em; display: none; margin-top: 10px; text-align: center;">
-                    ⏳ Calibrando (5s)... ¡Miren a la cámara!
-                </p>
+                    <button id="btn-calibrar" class="btn-calibrar" disabled>⏳ Cargando IA...</button>
+                    <p id="mensaje-calibracion" style="color: var(--azul-medio); font-weight: 600; font-size: 0.9em; display: none; margin-top: 10px; text-align: center;">
+                        ⏳ Calibrando (5s)... ¡Miren a la cámara!
+                    </p>
+                </div>
             </div>
 
             <div class="panel">
-                <h2>📚 Biblioteca</h2>
-                <a href="/agregar" style="display:block; text-align:center; background:var(--azul-claro); color:var(--azul-oscuro); text-decoration:none; font-weight:600; font-size:13.5px; padding:9px; border-radius:8px; margin-bottom:12px;">
+                <button type="button" class="btn-desplegable" data-target="contenido-biblioteca" aria-expanded="false">
+                    <span>📚 Biblioteca</span>
+                    <span class="flecha-desplegable">▾</span>
+                </button>
+                <a href="/agregar" style="display:block; text-align:center; background:var(--azul-claro); color:var(--azul-oscuro); text-decoration:none; font-weight:600; font-size:13.5px; padding:9px; border-radius:8px; margin-top:12px;">
                     ➕ Agregar video
                 </a>
-                <div id="contenedor-lista">Cargando videos...</div>
+                <div id="contenido-biblioteca" class="contenido-desplegable" style="display:none;">
+                    <div id="contenedor-lista">Cargando videos...</div>
+                </div>
             </div>
         </div>
 
@@ -356,10 +511,13 @@
                 <button id="btn-reanudar">Reanudar ahora</button>
             </div>
 
-            <h2 id="titulo-video">Selecciona una lección</h2>
+            <div class="fila-titulo-video">
+                <h2 id="titulo-video">Selecciona una lección</h2>
+                <button type="button" id="btn-cerrar-video" class="btn-cerrar-video" title="Cerrar video y volver a MarIA" style="display:none;">✕</button>
+            </div>
             <div class="contenedor-video modo-avatar">
                 <div id="avatar-placeholder" class="avatar-placeholder">
-                    <svg viewBox="0 0 200 220" width="240" height="264" role="img" aria-label="Avatar de la Teacher MarIA">
+                    <svg viewBox="0 0 200 220" class="avatar-svg" role="img" aria-label="Avatar de la Teacher MarIA">
                         <defs>
                             <linearGradient id="gradPiel" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stop-color="#FBDCB8"/>
@@ -457,7 +615,7 @@
                 </div>
                 <form id="form-texto-asistente" class="controles-asistente">
                     <button type="button" id="btn-microfono" class="btn-microfono" title="Hablar con MarIA">🎤</button>
-                    <input type="text" id="input-texto-asistente" class="input-texto-asistente" placeholder="O escribe tu pregunta aquí...">
+                    <input type="text" id="input-texto-asistente" class="input-texto-asistente" placeholder="Escribe tu pregunta aquí...">
                     <button type="submit" id="btn-enviar-texto" class="btn-enviar-texto" title="Enviar">➤</button>
                 </form>
                 <span id="estado-asistente" class="estado-asistente">Presiona el micrófono o escribe tu consulta arriba</span>
@@ -479,8 +637,11 @@
                     Mirando al frente: <span id="contador-mirando">0</span>
                 </p>
                 <span class="badge-estado" id="estado-ia">Esperando modelos...</span>
-                <p id="debug-pose" style="font-size: 11.5px; color: var(--texto-suave); margin-top: 8px; font-family: monospace;"></p>
-                <p id="debug-recursos" style="font-size: 11.5px; color: var(--texto-suave); margin-top: 4px; font-family: monospace;"></p>
+                <button type="button" id="btn-toggle-debug" class="btn-toggle-debug">🐛 Debug</button>
+                <div id="panel-debug" class="panel-debug" style="display:none;">
+                    <p id="debug-pose" style="font-size: 11.5px; color: var(--texto-suave); margin-top: 8px; font-family: monospace;"></p>
+                    <p id="debug-recursos" style="font-size: 11.5px; color: var(--texto-suave); margin-top: 4px; font-family: monospace;"></p>
+                </div>
             </div>
         </div>
     </main>
@@ -503,12 +664,18 @@
             contenedorVideo.classList.add('modo-avatar');
             videoPlayer.pause();
             tituloVideo.innerText = "Selecciona una lección";
+            btnCerrarVideo.style.display = 'none';
         }
         function ocultarAvatar() {
             avatarPlaceholder.style.display = 'none';
             videoPlayer.style.display = 'block';
             contenedorVideo.classList.remove('modo-avatar');
+            btnCerrarVideo.style.display = 'flex';
         }
+        // La "✕" solo corta el video y regresa al avatar de MarIA; la
+        // conversación del chat se queda intacta (no toca listaConversacion).
+        const btnCerrarVideo = document.getElementById('btn-cerrar-video');
+        btnCerrarVideo.onclick = mostrarAvatar;
         // En cuanto un video llega al final, regresamos al avatar solo.
         videoPlayer.addEventListener('ended', mostrarAvatar);
 
@@ -543,6 +710,18 @@
         }
         cargarVideos();
 
+        // Paneles desplegables (Ajustes del Aula / Biblioteca): el botón de
+        // encabezado muestra/oculta su contenido y gira la flechita. Genérico
+        // por data-target, así que sirve para cualquier panel que lo use.
+        document.querySelectorAll('.btn-desplegable').forEach((boton) => {
+            const contenido = document.getElementById(boton.dataset.target);
+            boton.addEventListener('click', () => {
+                const expandido = boton.getAttribute('aria-expanded') === 'true';
+                boton.setAttribute('aria-expanded', String(!expandido));
+                contenido.style.display = expandido ? 'none' : 'block';
+            });
+        });
+
         // ==================================================================
         // --- ASISTENTE DE VOZ (MarIA) ------------------------------------
         // ==================================================================
@@ -564,6 +743,19 @@
             preguntarAMarIA(texto);
         });
         const estadoAsistente = document.getElementById('estado-asistente');
+        const tituloAsistente = document.querySelector('.asistente h3');
+        const MENSAJE_ESTADO_IDLE = "Presiona el micrófono o escribe tu consulta arriba";
+
+        // El mensaje idle por defecto ya no aporta nada una vez que arrancó
+        // la conversación (el placeholder del input ya invita a escribir) y
+        // solo le quita espacio al chat/video. Lo escondemos en ese caso;
+        // cualquier otro mensaje (pensando, escuchando, error...) sí se
+        // muestra siempre, aunque la conversación ya haya arrancado.
+        function actualizarEstadoAsistente(texto) {
+            estadoAsistente.innerText = texto;
+            const conversacionEmpezada = tituloAsistente.style.display === 'none';
+            estadoAsistente.style.display = (texto === MENSAJE_ESTADO_IDLE && conversacionEmpezada) ? 'none' : 'block';
+        }
 
         // Un id de sesión por pestaña/salón. Mientras no recargues la página,
         // MarIA recuerda todo lo que se ha platicado en ESTA sesión (el backend
@@ -577,7 +769,13 @@
         // se los pase a hablarTexto().
         function agregarBurbuja(texto, quien, nombreVideo, mostrarReintentar, conControlesNarracion) {
             const vacio = listaConversacion.querySelector('.mensaje-vacio');
-            if (vacio) vacio.remove();
+            if (vacio) {
+                vacio.remove();
+                // En cuanto arranca la conversación ya no hace falta el
+                // título "Pregúntale a la Teacher MarIA": lo escondemos y
+                // ese espacio se lo gana el historial del chat.
+                tituloAsistente.style.display = 'none';
+            }
 
             const burbuja = document.createElement('div');
             burbuja.className = `burbuja ${quien}`;
@@ -757,15 +955,23 @@
         // burbuja en particular cuando la narración termina o se corta.
         let botonesNarracionActiva = null;
 
-        function finalizarNarracion() {
+        // Solo la parte visual (boca + botones ⏹/↻ de la burbuja). No toca el
+        // mute del video: se usa para "apagar" la burbuja anterior cuando
+        // arranca una narración nueva, y esa narración nueva puede traer su
+        // propio video recién muteado que NO se debe desmutear todavía.
+        function detenerEstadoVisualNarracion() {
             detenerAnimacionBoca();
-            if (videoSilenciadoPorNarracion) {
-                videoPlayer.muted = false;
-                videoSilenciadoPorNarracion = false;
-            }
             if (botonesNarracionActiva) {
                 botonesNarracionActiva.btnDetener.style.display = 'none';
                 botonesNarracionActiva.btnRepetir.style.display = 'flex';
+            }
+        }
+
+        function finalizarNarracion() {
+            detenerEstadoVisualNarracion();
+            if (videoSilenciadoPorNarracion) {
+                videoPlayer.muted = false;
+                videoSilenciadoPorNarracion = false;
             }
         }
 
@@ -786,9 +992,20 @@
         // forma independiente, sin importar cuál fue la última.
         function hablarTexto(texto, botones) {
             detenerNarracionActual(); // corta cualquier narración anterior
-            finalizarNarracion(); // deja a la burbuja anterior en estado "no está hablando"
+            detenerEstadoVisualNarracion(); // deja a la burbuja anterior en estado "no está hablando"
             botonesNarracionActiva = botones;
             botones.btnRepetir.style.display = 'none';
+
+            // Si hay un video reproduciéndose ahorita (así haya arrancado
+            // desde la Biblioteca, no como parte de esta pregunta), lo
+            // muteamos mientras MarIA habla para que no se empalmen las dos
+            // voces. Antes esto solo pasaba cuando la respuesta traía un
+            // video nuevo (datos.video en preguntarAMarIA); un video que ya
+            // estaba sonando de antes se quedaba sin mutear.
+            if (!videoPlayer.paused) {
+                videoPlayer.muted = true;
+                videoSilenciadoPorNarracion = true;
+            }
 
             // Usamos "src" en vez de fetch()+blob a propósito: así el navegador
             // pide el audio en streaming y puede empezar a reproducirlo apenas
@@ -819,7 +1036,7 @@
         async function preguntarAMarIA(textoAlumno) {
             ultimaPreguntaAlumno = textoAlumno;
             agregarBurbuja(textoAlumno, 'alumno');
-            estadoAsistente.innerText = "MarIA está pensando...";
+            actualizarEstadoAsistente("MarIA está pensando...");
             inputTextoAsistente.disabled = true;
             btnEnviarTexto.disabled = true;
             btnCancelarPregunta.style.display = 'inline-block';
@@ -831,10 +1048,10 @@
             // que si tarda, avisamos que seguimos intentando en vez de dejar
             // "pensando..." fijo todo ese rato, que se siente como que se trabó.
             const timerSigoEnEso = setTimeout(() => {
-                estadoAsistente.innerText = "Sigo en eso...";
+                actualizarEstadoAsistente("Sigo en eso...");
             }, 4000);
             const timerDificultades = setTimeout(() => {
-                estadoAsistente.innerText = "Estoy teniendo dificultades para encontrar el contenido, dame un momento más...";
+                actualizarEstadoAsistente("Estoy teniendo dificultades para encontrar el contenido, dame un momento más...");
             }, 9000);
 
             try {
@@ -879,17 +1096,17 @@
                     videoPlayer.play();
                 }
                 hablarTexto(datos.respuesta, botonesNarracion);
-                estadoAsistente.innerText = "Presiona el micrófono o escribe tu consulta arriba";
+                actualizarEstadoAsistente(MENSAJE_ESTADO_IDLE);
             } catch (error) {
                 if (error.name === 'AbortError') {
                     // El profe le dio "Cancelar" a propósito, no es un error real.
                     console.log("Pregunta cancelada por el usuario.");
                     agregarBurbuja("Pregunta cancelada.", 'maria', null, true);
-                    estadoAsistente.innerText = "Presiona el micrófono o escribe tu consulta arriba";
+                    actualizarEstadoAsistente(MENSAJE_ESTADO_IDLE);
                 } else {
                     console.error("Error hablando con MarIA:", error);
                     agregarBurbuja("No pude conectarme con MarIA, intenta de nuevo.", 'maria', null, true);
-                    estadoAsistente.innerText = "Error de conexión";
+                    actualizarEstadoAsistente("Error de conexión");
                 }
             } finally {
                 clearTimeout(timerSigoEnEso);
@@ -923,13 +1140,13 @@
             };
             reconocedor.onerror = (evento) => {
                 console.error("Error de reconocimiento de voz:", evento.error);
-                estadoAsistente.innerText = "No te escuché bien, intenta otra vez";
+                actualizarEstadoAsistente("No te escuché bien, intenta otra vez");
             };
             reconocedor.onend = () => {
                 escuchando = false;
                 btnMicrofono.classList.remove('escuchando');
                 if (estadoAsistente.innerText === "Escuchando...") {
-                    estadoAsistente.innerText = "Presiona el micrófono o escribe tu consulta arriba";
+                    actualizarEstadoAsistente(MENSAJE_ESTADO_IDLE);
                 }
             };
 
@@ -940,12 +1157,12 @@
                 }
                 escuchando = true;
                 btnMicrofono.classList.add('escuchando');
-                estadoAsistente.innerText = "Escuchando...";
+                actualizarEstadoAsistente("Escuchando...");
                 reconocedor.start();
             };
         } else {
             btnMicrofono.disabled = true;
-            estadoAsistente.innerText = "Tu navegador no soporta micrófono (usa Chrome/Edge)";
+            actualizarEstadoAsistente("Tu navegador no soporta micrófono (usa Chrome/Edge)");
         }
         // ==================================================================
 
@@ -957,6 +1174,16 @@
         const spanMirando = document.getElementById('contador-mirando');
         const debugPose = document.getElementById('debug-pose'); // TEMPORAL: para diagnosticar la pose real en pantalla, sin abrir la consola
         const debugRecursos = document.getElementById('debug-recursos'); // TEMPORAL: aproximación de costo de CPU/RAM del análisis, ver nota en loopAnalisis
+
+        // Panel de debug oculto por default: se abre/cierra con la pestañita
+        // "🐛 Debug", para no ensuciar la vista normal de la demo.
+        const btnToggleDebug = document.getElementById('btn-toggle-debug');
+        const panelDebug = document.getElementById('panel-debug');
+        btnToggleDebug.onclick = () => {
+            const visible = panelDebug.style.display !== 'none';
+            panelDebug.style.display = visible ? 'none' : 'block';
+            btnToggleDebug.innerText = visible ? '🐛 Debug' : '🐛 Ocultar debug';
+        };
         const inputTotalAlumnos = document.getElementById('total-alumnos');
         const checkboxAutoTotal = document.getElementById('auto-total-checkbox');
 
