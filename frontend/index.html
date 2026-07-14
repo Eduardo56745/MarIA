@@ -258,6 +258,20 @@
         }
         .btn-cancelar-pregunta:hover { background: #FBEAEA; }
 
+        .btn-detener-narracion {
+            display: none;
+            margin-top: 8px;
+            background: white;
+            border: 1px solid var(--azul-oscuro);
+            color: var(--azul-oscuro);
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: 14px;
+            cursor: pointer;
+        }
+        .btn-detener-narracion:hover { background: var(--azul-claro); }
+
         .input-texto-asistente {
             flex: 1;
             padding: 11px 14px;
@@ -328,24 +342,84 @@
             <h2 id="titulo-video">Selecciona una lección</h2>
             <div class="contenedor-video modo-avatar">
                 <div id="avatar-placeholder" class="avatar-placeholder">
-                    <svg viewBox="0 0 200 200" width="270" height="270" role="img" aria-label="Avatar de alumno">
-                        <circle cx="100" cy="118" r="55" fill="#1565C0"/>
-                        <rect x="82" y="150" width="14" height="30" rx="6" fill="#F2C094"/>
-                        <rect x="104" y="150" width="14" height="30" rx="6" fill="#F2C094"/>
-                        <path d="M60 175 Q100 195 140 175 L140 200 L60 200 Z" fill="#0B3C6B"/>
-                        <ellipse cx="100" cy="88" rx="42" ry="40" fill="#F2C094"/>
-                        <path d="M58 78 Q60 40 100 38 Q140 40 142 78 Q140 60 100 58 Q60 60 58 78Z" fill="#3B2A20"/>
-                        <path d="M56 70 Q54 95 62 108 Q56 95 58 72Z" fill="#3B2A20"/>
-                        <path d="M144 70 Q146 95 138 108 Q144 95 142 72Z" fill="#3B2A20"/>
-                        <circle cx="84" cy="90" r="5" fill="#2B2118"/>
-                        <circle cx="116" cy="90" r="5" fill="#2B2118"/>
-                        <circle cx="75" cy="100" r="7" fill="#F4A97F" opacity="0.55"/>
-                        <circle cx="125" cy="100" r="7" fill="#F4A97F" opacity="0.55"/>
-                        <path d="M85 108 Q100 120 115 108" stroke="#7A4B2E" stroke-width="3" fill="none" stroke-linecap="round"/>
-                        <rect x="66" y="130" width="68" height="34" rx="14" fill="white"/>
-                        <path d="M100 130 L88 145 L100 155 L112 145 Z" fill="#D64545"/>
-                        <rect x="30" y="140" width="18" height="45" rx="8" fill="#2E8BE6"/>
-                        <rect x="152" y="140" width="18" height="45" rx="8" fill="#2E8BE6"/>
+                    <svg viewBox="0 0 200 220" width="240" height="264" role="img" aria-label="Avatar de la Teacher MarIA">
+                        <defs>
+                            <linearGradient id="gradPiel" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#FBDCB8"/>
+                                <stop offset="100%" stop-color="#EFBB8C"/>
+                            </linearGradient>
+                            <linearGradient id="gradCabello" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#5A4130"/>
+                                <stop offset="100%" stop-color="#2B1D12"/>
+                            </linearGradient>
+                            <linearGradient id="gradBlazer" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#1E73C7"/>
+                                <stop offset="100%" stop-color="#0B3C6B"/>
+                            </linearGradient>
+                        </defs>
+
+                        <!-- Fondo circular suave, como una foto de perfil -->
+                        <circle cx="100" cy="105" r="98" fill="#E8F1FB"/>
+
+                        <!-- Hombros / saco -->
+                        <path d="M28 220 Q30 150 100 142 Q170 150 172 220 Z" fill="url(#gradBlazer)"/>
+                        <!-- Blusa, cuello en V -->
+                        <path d="M78 148 L100 186 L122 148 Q124 149 124 152 L100 178 L76 152 Q76 149 78 148Z" fill="white"/>
+                        <!-- Broche -->
+                        <circle cx="100" cy="174" r="7" fill="#D64545"/>
+
+                        <!-- Cuello -->
+                        <rect x="88" y="126" width="24" height="28" rx="8" fill="url(#gradPiel)"/>
+
+                        <!-- Orejas -->
+                        <circle cx="59" cy="99" r="8" fill="url(#gradPiel)"/>
+                        <circle cx="141" cy="99" r="8" fill="url(#gradPiel)"/>
+
+                        <!-- Cara -->
+                        <path d="M60 93 Q57 44 100 38 Q143 44 140 93 Q140 134 100 138 Q60 134 60 93Z" fill="url(#gradPiel)"/>
+                        <!-- Sombra suave lateral, para dar volumen a la cara -->
+                        <path d="M124 54 Q141 80 132 122 Q127 90 117 64Z" fill="#D89A66" opacity="0.25"/>
+
+                        <!-- Cabello: marco, mechones laterales y chongo -->
+                        <path d="M55 88 Q48 38 100 30 Q152 38 145 88 Q151 52 100 45 Q49 52 55 88Z" fill="url(#gradCabello)"/>
+                        <path d="M54 76 Q46 112 61 130 Q50 100 57 78Z" fill="url(#gradCabello)"/>
+                        <path d="M146 76 Q154 112 139 130 Q150 100 143 78Z" fill="url(#gradCabello)"/>
+                        <ellipse cx="100" cy="26" rx="20" ry="16" fill="url(#gradCabello)"/>
+
+                        <!-- Cejas -->
+                        <path d="M71 77 Q82 68 94 75" stroke="#2B1D12" stroke-width="3" fill="none" stroke-linecap="round"/>
+                        <path d="M106 75 Q118 68 129 77" stroke="#2B1D12" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+                        <!-- Ojos: esclerótica, iris, pupila y brillo -->
+                        <ellipse cx="83" cy="90" rx="8" ry="6" fill="white"/>
+                        <ellipse cx="117" cy="90" rx="8" ry="6" fill="white"/>
+                        <circle cx="83" cy="90" r="4" fill="#5A3A22"/>
+                        <circle cx="117" cy="90" r="4" fill="#5A3A22"/>
+                        <circle cx="84.5" cy="88.5" r="1.3" fill="white"/>
+                        <circle cx="118.5" cy="88.5" r="1.3" fill="white"/>
+                        <path d="M75 85 Q83 81 91 85" stroke="#2B1D12" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+                        <path d="M109 85 Q117 81 125 85" stroke="#2B1D12" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+
+                        <!-- Lentes -->
+                        <rect x="72" y="82" width="22" height="17" rx="7" fill="none" stroke="#0B3C6B" stroke-width="2.5"/>
+                        <rect x="106" y="82" width="22" height="17" rx="7" fill="none" stroke="#0B3C6B" stroke-width="2.5"/>
+                        <line x1="94" y1="89" x2="106" y2="89" stroke="#0B3C6B" stroke-width="2.5"/>
+                        <line x1="72" y1="86" x2="62" y2="82" stroke="#0B3C6B" stroke-width="2"/>
+                        <line x1="128" y1="86" x2="138" y2="82" stroke="#0B3C6B" stroke-width="2"/>
+
+                        <!-- Nariz -->
+                        <path d="M98 96 Q96 106 100 109 Q104 106 102 96" stroke="#D89A66" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+
+                        <!-- Mejillas -->
+                        <ellipse cx="74" cy="108" rx="8" ry="5" fill="#F4A97F" opacity="0.4"/>
+                        <ellipse cx="126" cy="108" rx="8" ry="5" fill="#F4A97F" opacity="0.4"/>
+
+                        <!-- Boca: dos estados, la animación alterna entre ellos con cada palabra hablada -->
+                        <path id="avatar-boca-cerrada" d="M86 118 Q100 126 114 118 Q100 123 86 118Z" fill="#B15D5D"/>
+                        <g id="avatar-boca-abierta" style="display:none;">
+                            <ellipse cx="100" cy="119" rx="10" ry="7" fill="#7A2E2E"/>
+                            <rect x="92" y="113" width="16" height="4" rx="2" fill="white"/>
+                        </g>
                     </svg>
                     <p class="avatar-mensaje">¡Hola! Elige una lección o pregúntame algo 🙋</p>
                 </div>
@@ -353,7 +427,7 @@
             </div>
 
             <div class="asistente">
-                <h3>🎙️ Pregúntale a MarIA</h3>
+                <h3>🎙️ Pregúntale a la Teacher MarIA</h3>
                 <div id="lista-conversacion" class="lista-conversacion">
                     <p class="mensaje-vacio">Presiona el micrófono o escribe tu consulta para hacerle una pregunta a MarIA.</p>
                 </div>
@@ -364,6 +438,7 @@
                 </form>
                 <span id="estado-asistente" class="estado-asistente">Presiona el micrófono o escribe tu consulta arriba</span>
                 <button type="button" id="btn-cancelar-pregunta" class="btn-cancelar-pregunta" style="display:none;">✕ Cancelar</button>
+                <button type="button" id="btn-detener-narracion" class="btn-detener-narracion">⏹ Detener a MarIA</button>
             </div>
         </div>
 
@@ -549,6 +624,66 @@
         };
         // ------------------------------------------------------------------------
 
+        const btnDetenerNarracion = document.getElementById('btn-detener-narracion');
+        // Se activa junto con videoPlayer.muted = true cuando silenciamos el
+        // video para que no se empalme con la narración (ver preguntarAMarIA).
+        // Así, al terminar de hablar, solo desmuteamos el video si el silencio
+        // lo puso la narración (y no, por ejemplo, un mute manual del profe).
+        let videoSilenciadoPorNarracion = false;
+
+        // --- Animación de boca del avatar mientras habla ---------------------
+        // Antes esto era un parpadeo a ritmo fijo (cada 150ms) sin relación
+        // con la voz real, y se sentía desfasado del audio. Ahora la boca se
+        // abre en cada evento 'boundary' que la propia voz dispara al pasar de
+        // palabra en palabra (Chrome/Edge lo soportan para la gran mayoría de
+        // voces en español), así el movimiento queda atado a lo que se está
+        // diciendo de verdad en vez de a un temporizador arbitrario.
+        const bocaCerrada = document.getElementById('avatar-boca-cerrada');
+        const bocaAbierta = document.getElementById('avatar-boca-abierta');
+        let temporizadorCierreBoca = null;
+        let intervaloRespaldoBoca = null; // ver iniciarRespaldoBoca
+
+        function abrirBocaBreve() {
+            bocaCerrada.style.display = 'none';
+            bocaAbierta.style.display = 'block';
+            clearTimeout(temporizadorCierreBoca);
+            temporizadorCierreBoca = setTimeout(cerrarBoca, 140);
+        }
+        function cerrarBoca() {
+            bocaCerrada.style.display = 'block';
+            bocaAbierta.style.display = 'none';
+        }
+        // Respaldo: si la voz elegida no dispara 'boundary' (pasa con algunas
+        // voces/sistemas operativos), la boca se quedaría congelada abierta o
+        // cerrada. Si no llega ningún límite de palabra poco después de
+        // empezar a hablar, caemos a un parpadeo a ritmo fijo para que al
+        // menos se vea movimiento en vez de una imagen estática.
+        function iniciarRespaldoBoca() {
+            if (intervaloRespaldoBoca) return;
+            let abierta = false;
+            intervaloRespaldoBoca = setInterval(() => {
+                abierta = !abierta;
+                bocaCerrada.style.display = abierta ? 'none' : 'block';
+                bocaAbierta.style.display = abierta ? 'block' : 'none';
+            }, 180);
+        }
+        function detenerAnimacionBoca() {
+            clearTimeout(temporizadorCierreBoca);
+            clearInterval(intervaloRespaldoBoca);
+            intervaloRespaldoBoca = null;
+            cerrarBoca();
+        }
+        // ----------------------------------------------------------------------
+
+        function finalizarNarracion() {
+            btnDetenerNarracion.style.display = 'none';
+            detenerAnimacionBoca();
+            if (videoSilenciadoPorNarracion) {
+                videoPlayer.muted = false;
+                videoSilenciadoPorNarracion = false;
+            }
+        }
+
         function hablarTexto(texto) {
             if (!('speechSynthesis' in window)) return;
             window.speechSynthesis.cancel(); // corta cualquier narración anterior
@@ -556,8 +691,30 @@
             utterance.lang = 'es-MX';
             utterance.rate = 1.0;
             if (vozElegida) utterance.voice = vozElegida;
+            let recibioLimitePalabra = false;
+            utterance.onstart = () => {
+                btnDetenerNarracion.style.display = 'inline-block';
+                setTimeout(() => { if (!recibioLimitePalabra) iniciarRespaldoBoca(); }, 400);
+            };
+            utterance.onboundary = (evento) => {
+                if (evento.name === 'sentence') return; // solo nos interesan límites de palabra
+                recibioLimitePalabra = true;
+                clearInterval(intervaloRespaldoBoca);
+                intervaloRespaldoBoca = null;
+                abrirBocaBreve();
+            };
+            // onerror también cubre el caso de que cancel() interrumpa la narración.
+            utterance.onend = finalizarNarracion;
+            utterance.onerror = finalizarNarracion;
             window.speechSynthesis.speak(utterance);
         }
+
+        // Botón "Detener a MarIA": corta la voz en seco. cancel() dispara el
+        // evento onerror de la utterance de arriba, que ya se encarga de
+        // ocultar el botón y desmutear el video si aplica.
+        btnDetenerNarracion.onclick = () => {
+            window.speechSynthesis.cancel();
+        };
 
         let ultimaPreguntaAlumno = null; // para poder reintentar sin repetir todo
         const btnCancelarPregunta = document.getElementById('btn-cancelar-pregunta');
@@ -615,6 +772,7 @@
                     ocultarAvatar();
                     videoPlayer.src = `/videos/${datos.video}`;
                     videoPlayer.muted = true;
+                    videoSilenciadoPorNarracion = true;
                     videoPlayer.currentTime = 0;
                     pausadoPorSistema = false;
                     contadorBajaAtencion = 0;
