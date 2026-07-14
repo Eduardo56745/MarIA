@@ -390,15 +390,22 @@
                         <path d="M71 77 Q82 68 94 75" stroke="#2B1D12" stroke-width="3" fill="none" stroke-linecap="round"/>
                         <path d="M106 75 Q118 68 129 77" stroke="#2B1D12" stroke-width="3" fill="none" stroke-linecap="round"/>
 
-                        <!-- Ojos: esclerótica, iris, pupila y brillo -->
-                        <ellipse cx="83" cy="90" rx="8" ry="6" fill="white"/>
-                        <ellipse cx="117" cy="90" rx="8" ry="6" fill="white"/>
-                        <circle cx="83" cy="90" r="4" fill="#5A3A22"/>
-                        <circle cx="117" cy="90" r="4" fill="#5A3A22"/>
-                        <circle cx="84.5" cy="88.5" r="1.3" fill="white"/>
-                        <circle cx="118.5" cy="88.5" r="1.3" fill="white"/>
-                        <path d="M75 85 Q83 81 91 85" stroke="#2B1D12" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-                        <path d="M109 85 Q117 81 125 85" stroke="#2B1D12" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+                        <!-- Ojos abiertos: esclerótica, iris, pupila y brillo -->
+                        <g id="avatar-ojos-abiertos">
+                            <ellipse cx="83" cy="90" rx="8" ry="6" fill="white"/>
+                            <ellipse cx="117" cy="90" rx="8" ry="6" fill="white"/>
+                            <circle cx="83" cy="90" r="4" fill="#5A3A22"/>
+                            <circle cx="117" cy="90" r="4" fill="#5A3A22"/>
+                            <circle cx="84.5" cy="88.5" r="1.3" fill="white"/>
+                            <circle cx="118.5" cy="88.5" r="1.3" fill="white"/>
+                            <path d="M75 85 Q83 81 91 85" stroke="#2B1D12" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+                            <path d="M109 85 Q117 81 125 85" stroke="#2B1D12" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+                        </g>
+                        <!-- Ojos cerrados: se muestran brevemente al parpadear -->
+                        <g id="avatar-ojos-cerrados" style="display:none;">
+                            <path d="M75 90 Q83 94.5 91 90" stroke="#2B1D12" stroke-width="2" fill="none" stroke-linecap="round"/>
+                            <path d="M109 90 Q117 94.5 125 90" stroke="#2B1D12" stroke-width="2" fill="none" stroke-linecap="round"/>
+                        </g>
 
                         <!-- Lentes -->
                         <rect x="72" y="82" width="22" height="17" rx="7" fill="none" stroke="#0B3C6B" stroke-width="2.5"/>
@@ -673,6 +680,24 @@
             intervaloRespaldoBoca = null;
             cerrarBoca();
         }
+        // ----------------------------------------------------------------------
+
+        // --- Parpadeo del avatar (idle, independiente de si está hablando) ----
+        const ojosAbiertos = document.getElementById('avatar-ojos-abiertos');
+        const ojosCerrados = document.getElementById('avatar-ojos-cerrados');
+        function parpadear() {
+            ojosAbiertos.style.display = 'none';
+            ojosCerrados.style.display = 'block';
+            setTimeout(() => {
+                ojosAbiertos.style.display = 'block';
+                ojosCerrados.style.display = 'none';
+            }, 130);
+        }
+        function programarParpadeo() {
+            const espera = 2600 + Math.random() * 3200; // entre 2.6s y 5.8s
+            setTimeout(() => { parpadear(); programarParpadeo(); }, espera);
+        }
+        programarParpadeo();
         // ----------------------------------------------------------------------
 
         function finalizarNarracion() {
