@@ -198,6 +198,7 @@
             background: var(--azul-claro);
             color: #1F2A37;
             border-bottom-left-radius: 3px;
+            position: relative;
         }
         .burbuja.maria .etiqueta-video {
             display: block;
@@ -206,6 +207,9 @@
             font-weight: 700;
             color: var(--azul-oscuro);
         }
+        /* Espacio reservado abajo para no encimar el texto con los botones
+           de narración (⏹/↻), que flotan en la esquina inferior derecha. */
+        .burbuja.maria.con-controles-narracion { padding-bottom: 34px; }
         .btn-reintentar {
             display: block;
             margin-top: 8px;
@@ -258,19 +262,32 @@
         }
         .btn-cancelar-pregunta:hover { background: #FBEAEA; }
 
-        .btn-detener-narracion {
-            display: none;
-            margin-top: 8px;
+        /* Controles de narración (⏹ detener / ↻ repetir): flotan en la
+           esquina inferior derecha de la burbuja de MarIA a la que
+           pertenecen, en vez de quedar fijos hasta abajo del panel. */
+        .controles-narracion-burbuja {
+            position: absolute;
+            bottom: 8px;
+            right: 10px;
+            display: flex;
+            gap: 6px;
+        }
+        .controles-narracion-burbuja button {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
             background: white;
             border: 1px solid var(--azul-oscuro);
             color: var(--azul-oscuro);
             font-size: 12.5px;
-            font-weight: 600;
-            padding: 5px 12px;
-            border-radius: 14px;
             cursor: pointer;
+            padding: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
         }
-        .btn-detener-narracion:hover { background: var(--azul-claro); }
+        .controles-narracion-burbuja button:hover { background: var(--azul-medio); color: white; }
 
         .input-texto-asistente {
             flex: 1;
@@ -445,7 +462,6 @@
                 </form>
                 <span id="estado-asistente" class="estado-asistente">Presiona el micrófono o escribe tu consulta arriba</span>
                 <button type="button" id="btn-cancelar-pregunta" class="btn-cancelar-pregunta" style="display:none;">✕ Cancelar</button>
-                <button type="button" id="btn-detener-narracion" class="btn-detener-narracion">⏹ Detener a MarIA</button>
             </div>
         </div>
 
@@ -554,7 +570,12 @@
         // guarda la memoria real; aquí solo guardamos el id para mandarlo).
         let sesionId = null;
 
-        function agregarBurbuja(texto, quien, nombreVideo, mostrarReintentar) {
+        // conControlesNarracion: true cuando esta burbuja de MarIA se va a
+        // narrar en voz alta. En ese caso se le agregan, flotando en su
+        // esquina inferior derecha, los botones ⏹ (detener) y ↻ (repetir esta
+        // respuesta puntual). Regresa esos botones para que preguntarAMarIA
+        // se los pase a hablarTexto().
+        function agregarBurbuja(texto, quien, nombreVideo, mostrarReintentar, conControlesNarracion) {
             const vacio = listaConversacion.querySelector('.mensaje-vacio');
             if (vacio) vacio.remove();
 
@@ -583,11 +604,40 @@
                 burbuja.appendChild(botonReintentar);
             }
 
+            let botonesNarracion = null;
+            if (conControlesNarracion) {
+                burbuja.classList.add('con-controles-narracion');
+                const contenedorControles = document.createElement('div');
+                contenedorControles.className = 'controles-narracion-burbuja';
+
+                const btnDetener = document.createElement('button');
+                btnDetener.type = 'button';
+                btnDetener.title = 'Detener a MarIA';
+                btnDetener.innerText = '⏹';
+
+                const btnRepetir = document.createElement('button');
+                btnRepetir.type = 'button';
+                btnRepetir.title = 'Volver a escuchar esta respuesta';
+                btnRepetir.innerText = '↻';
+
+                botonesNarracion = { btnDetener, btnRepetir };
+
+                btnDetener.onclick = () => {
+                    detenerNarracionActual();
+                    finalizarNarracion();
+                };
+                btnRepetir.onclick = () => hablarTexto(texto, botonesNarracion);
+
+                contenedorControles.appendChild(btnDetener);
+                contenedorControles.appendChild(btnRepetir);
+                burbuja.appendChild(contenedorControles);
+            }
+
             listaConversacion.appendChild(burbuja);
             listaConversacion.scrollTop = listaConversacion.scrollHeight;
+            return botonesNarracion;
         }
 
-        const btnDetenerNarracion = document.getElementById('btn-detener-narracion');
         // Se activa junto con videoPlayer.muted = true cuando silenciamos el
         // video para que no se empalme con la narración (ver preguntarAMarIA).
         // Así, al terminar de hablar, solo desmuteamos el video si el silencio
@@ -701,12 +751,21 @@
         programarParpadeo();
         // ----------------------------------------------------------------------
 
+        // Botones (⏹/↻) de la burbuja cuya narración está activa ahora mismo
+        // (viven DENTRO de esa burbuja, ver agregarBurbuja). Se guarda la
+        // referencia aquí para poder ocultar el ⏹ y mostrar el ↻ de esa
+        // burbuja en particular cuando la narración termina o se corta.
+        let botonesNarracionActiva = null;
+
         function finalizarNarracion() {
-            btnDetenerNarracion.style.display = 'none';
             detenerAnimacionBoca();
             if (videoSilenciadoPorNarracion) {
                 videoPlayer.muted = false;
                 videoSilenciadoPorNarracion = false;
+            }
+            if (botonesNarracionActiva) {
+                botonesNarracionActiva.btnDetener.style.display = 'none';
+                botonesNarracionActiva.btnRepetir.style.display = 'flex';
             }
         }
 
@@ -721,8 +780,15 @@
             }
         }
 
-        function hablarTexto(texto) {
+        // botones: { btnDetener, btnRepetir } de la burbuja dueña de este
+        // texto (ver agregarBurbuja). Cada burbuja de MarIA trae los suyos,
+        // así que cualquier respuesta anterior se puede volver a escuchar de
+        // forma independiente, sin importar cuál fue la última.
+        function hablarTexto(texto, botones) {
             detenerNarracionActual(); // corta cualquier narración anterior
+            finalizarNarracion(); // deja a la burbuja anterior en estado "no está hablando"
+            botonesNarracionActiva = botones;
+            botones.btnRepetir.style.display = 'none';
 
             // Usamos "src" en vez de fetch()+blob a propósito: así el navegador
             // pide el audio en streaming y puede empezar a reproducirlo apenas
@@ -733,7 +799,7 @@
             audioNarracionActual = audio;
 
             audio.onplay = () => {
-                btnDetenerNarracion.style.display = 'inline-block';
+                botones.btnDetener.style.display = 'flex';
                 iniciarLipSyncPorAmplitud(audio);
             };
             // onerror también cubre el caso de que pause() interrumpa la narración.
@@ -745,12 +811,6 @@
 
             audio.play().catch(finalizarNarracion);
         }
-
-        // Botón "Detener a MarIA": corta la voz en seco.
-        btnDetenerNarracion.onclick = () => {
-            detenerNarracionActual();
-            finalizarNarracion();
-        };
 
         let ultimaPreguntaAlumno = null; // para poder reintentar sin repetir todo
         const btnCancelarPregunta = document.getElementById('btn-cancelar-pregunta');
@@ -798,7 +858,9 @@
 
                 // Si el backend agotó sus reintentos y regresó el mensaje de
                 // "no pude responder", le agregamos la flechita de reintentar.
-                agregarBurbuja(datos.respuesta, 'maria', datos.video, datos.error === true);
+                // conControlesNarracion=true: esta burbuja sí se va a narrar,
+                // así que trae sus propios botones ⏹/↻.
+                const botonesNarracion = agregarBurbuja(datos.respuesta, 'maria', datos.video, datos.error === true, true);
 
                 // Reproducción SINCRONIZADA: el video arranca al mismo tiempo
                 // que MarIA empieza a narrar la respuesta. Silenciamos el audio
@@ -816,7 +878,7 @@
                     ocultarAlertaAtencion();
                     videoPlayer.play();
                 }
-                hablarTexto(datos.respuesta);
+                hablarTexto(datos.respuesta, botonesNarracion);
                 estadoAsistente.innerText = "Presiona el micrófono o escribe tu consulta arriba";
             } catch (error) {
                 if (error.name === 'AbortError') {
