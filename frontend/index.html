@@ -587,50 +587,6 @@
             listaConversacion.scrollTop = listaConversacion.scrollHeight;
         }
 
-        // --- Selección de voz (femenina, en español) -------------------------
-        // El navegador tarda un poco en cargar la lista de voces disponibles
-        // (a veces están listas de inmediato, a veces solo después del evento
-        // 'voiceschanged'), así que la buscamos las dos formas.
-        let vozElegida = null;
-
-        function elegirVozFemenina() {
-            const voces = window.speechSynthesis.getVoices();
-            if (voces.length === 0) return null;
-
-            // Nombres de voces en español que casi siempre vienen configuradas
-            // como femeninas en Windows/Chrome/Edge. Se busca por coincidencia
-            // parcial porque el nombre exacto varía según el sistema operativo.
-            const nombresPreferidos = ['sabina', 'helena', 'paulina', 'mónica', 'monica', 'google español', 'elvira'];
-
-            for (const nombreBuscado of nombresPreferidos) {
-                const encontrada = voces.find(v =>
-                    v.lang.toLowerCase().startsWith('es') &&
-                    v.name.toLowerCase().includes(nombreBuscado)
-                );
-                if (encontrada) return encontrada;
-            }
-
-            // Si ninguna coincide por nombre, evitamos voces que digan
-            // explícitamente "male" en el nombre y nos quedamos con
-            // cualquier voz en español disponible.
-            const cualquierEspanolNoMasculina = voces.find(v =>
-                v.lang.toLowerCase().startsWith('es') && !v.name.toLowerCase().includes('male')
-            );
-            if (cualquierEspanolNoMasculina) return cualquierEspanolNoMasculina;
-
-            // Último recurso: cualquier voz en español, aunque no sepamos el género.
-            return voces.find(v => v.lang.toLowerCase().startsWith('es')) || null;
-        }
-
-        // Intentamos elegir la voz de inmediato...
-        vozElegida = elegirVozFemenina();
-        // ...y también en cuanto el navegador termine de cargar la lista completa
-        // (Chrome normalmente dispara este evento un momento después de cargar la página).
-        window.speechSynthesis.onvoiceschanged = () => {
-            vozElegida = elegirVozFemenina();
-        };
-        // ------------------------------------------------------------------------
-
         const btnDetenerNarracion = document.getElementById('btn-detener-narracion');
         // Se activa junto con videoPlayer.muted = true cuando silenciamos el
         // video para que no se empalme con la narración (ver preguntarAMarIA).
@@ -639,45 +595,90 @@
         let videoSilenciadoPorNarracion = false;
 
         // --- Animación de boca del avatar mientras habla ---------------------
-        // Antes esto era un parpadeo a ritmo fijo (cada 150ms) sin relación
-        // con la voz real, y se sentía desfasado del audio. Ahora la boca se
-        // abre en cada evento 'boundary' que la propia voz dispara al pasar de
-        // palabra en palabra (Chrome/Edge lo soportan para la gran mayoría de
-        // voces en español), así el movimiento queda atado a lo que se está
-        // diciendo de verdad en vez de a un temporizador arbitrario.
+        // Ahora el audio ya viene pregrabado desde Azure Speech (/api/tts), así
+        // que no existe un evento "onboundary" por palabra como con la voz del
+        // navegador. En su lugar, analizamos el volumen real del audio en
+        // reproducción con Web Audio API (AnalyserNode) y abrimos/cerramos la
+        // boca según la amplitud, cuadro a cuadro.
         const bocaCerrada = document.getElementById('avatar-boca-cerrada');
         const bocaAbierta = document.getElementById('avatar-boca-abierta');
+        let contextoAudio = null;
+        let idAnimacionBoca = null;
         let temporizadorCierreBoca = null;
-        let intervaloRespaldoBoca = null; // ver iniciarRespaldoBoca
 
-        function abrirBocaBreve() {
-            bocaCerrada.style.display = 'none';
-            bocaAbierta.style.display = 'block';
-            clearTimeout(temporizadorCierreBoca);
-            temporizadorCierreBoca = setTimeout(cerrarBoca, 140);
-        }
         function cerrarBoca() {
             bocaCerrada.style.display = 'block';
             bocaAbierta.style.display = 'none';
         }
-        // Respaldo: si la voz elegida no dispara 'boundary' (pasa con algunas
-        // voces/sistemas operativos), la boca se quedaría congelada abierta o
-        // cerrada. Si no llega ningún límite de palabra poco después de
-        // empezar a hablar, caemos a un parpadeo a ritmo fijo para que al
-        // menos se vea movimiento en vez de una imagen estática.
-        function iniciarRespaldoBoca() {
-            if (intervaloRespaldoBoca) return;
-            let abierta = false;
-            intervaloRespaldoBoca = setInterval(() => {
-                abierta = !abierta;
-                bocaCerrada.style.display = abierta ? 'none' : 'block';
-                bocaAbierta.style.display = abierta ? 'block' : 'none';
-            }, 180);
-        }
-        function detenerAnimacionBoca() {
+        function abrirBocaBreve() {
+            bocaCerrada.style.display = 'none';
+            bocaAbierta.style.display = 'block';
             clearTimeout(temporizadorCierreBoca);
-            clearInterval(intervaloRespaldoBoca);
-            intervaloRespaldoBoca = null;
+            temporizadorCierreBoca = setTimeout(cerrarBoca, 130);
+        }
+
+        function iniciarLipSyncPorAmplitud(elementoAudio) {
+            if (!contextoAudio) {
+                contextoAudio = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (contextoAudio.state === 'suspended') contextoAudio.resume();
+
+            const fuente = contextoAudio.createMediaElementSource(elementoAudio);
+            const analizador = contextoAudio.createAnalyser();
+            analizador.fftSize = 256;
+            analizador.smoothingTimeConstant = 0.2;
+            fuente.connect(analizador);
+            analizador.connect(contextoAudio.destination);
+
+            const datos = new Uint8Array(analizador.frequencyBinCount);
+
+            // El volumen de una voz casi nunca cae a cero entre sílabas (queda
+            // "ruido" espectral de fondo), así que comparar contra un promedio
+            // reciente no sirve: el promedio se pone al día con la voz casi de
+            // inmediato y el umbral relativo deja de dispararse. En su lugar
+            // detectamos "ataques": subidas bruscas de volumen respecto al
+            // valle más reciente, que es justo el inicio de cada sílaba.
+            // Cada ataque abre la boca un instante corto (abrirBocaBreve), como
+            // antes hacía cada límite de palabra de la voz del navegador.
+            let valle = 0; // sigue los mínimos recientes: baja al toque, sube despacio
+            let ultimoDisparo = 0;
+            const UMBRAL_SILENCIO = 8;   // por debajo de esto, no hay voz de verdad
+            const SUBIDA_MINIMA = 14;    // cuánto debe subir sobre el valle para contar como sílaba nueva
+            const DEBOUNCE_MS = 90;      // no disparar dos veces más seguido que esto
+
+            // Usamos setInterval y no requestAnimationFrame a propósito: rAF
+            // se pausa por completo en cuanto la pestaña pierde el foco o
+            // queda oculta detrás de otra ventana, y ahí la boca se quedaría
+            // congelada aunque la voz siguiera sonando.
+            idAnimacionBoca = setInterval(() => {
+                analizador.getByteFrequencyData(datos);
+                let suma = 0;
+                for (let i = 0; i < datos.length; i++) suma += datos[i];
+                const promedio = suma / datos.length;
+
+                if (promedio < valle) {
+                    valle = promedio;
+                } else {
+                    valle += (promedio - valle) * 0.02;
+                }
+
+                const ahora = performance.now();
+                if (promedio < UMBRAL_SILENCIO) {
+                    cerrarBoca(); // pausa real (silencio de verdad): cerramos ya
+                } else if (
+                    (promedio - valle) > SUBIDA_MINIMA &&
+                    (ahora - ultimoDisparo) > DEBOUNCE_MS
+                ) {
+                    ultimoDisparo = ahora;
+                    abrirBocaBreve();
+                }
+            }, 40);
+        }
+
+        function detenerAnimacionBoca() {
+            if (idAnimacionBoca) clearInterval(idAnimacionBoca);
+            idAnimacionBoca = null;
+            clearTimeout(temporizadorCierreBoca);
             cerrarBoca();
         }
         // ----------------------------------------------------------------------
@@ -709,36 +710,46 @@
             }
         }
 
-        function hablarTexto(texto) {
-            if (!('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel(); // corta cualquier narración anterior
-            const utterance = new SpeechSynthesisUtterance(texto);
-            utterance.lang = 'es-MX';
-            utterance.rate = 1.0;
-            if (vozElegida) utterance.voice = vozElegida;
-            let recibioLimitePalabra = false;
-            utterance.onstart = () => {
-                btnDetenerNarracion.style.display = 'inline-block';
-                setTimeout(() => { if (!recibioLimitePalabra) iniciarRespaldoBoca(); }, 400);
-            };
-            utterance.onboundary = (evento) => {
-                if (evento.name === 'sentence') return; // solo nos interesan límites de palabra
-                recibioLimitePalabra = true;
-                clearInterval(intervaloRespaldoBoca);
-                intervaloRespaldoBoca = null;
-                abrirBocaBreve();
-            };
-            // onerror también cubre el caso de que cancel() interrumpa la narración.
-            utterance.onend = finalizarNarracion;
-            utterance.onerror = finalizarNarracion;
-            window.speechSynthesis.speak(utterance);
+        // Audio de la narración en curso (si hay una), para poder cortarla con
+        // el botón "Detener a MarIA" antes de que termine sola.
+        let audioNarracionActual = null;
+
+        function detenerNarracionActual() {
+            if (audioNarracionActual) {
+                audioNarracionActual.pause();
+                audioNarracionActual = null;
+            }
         }
 
-        // Botón "Detener a MarIA": corta la voz en seco. cancel() dispara el
-        // evento onerror de la utterance de arriba, que ya se encarga de
-        // ocultar el botón y desmutear el video si aplica.
+        function hablarTexto(texto) {
+            detenerNarracionActual(); // corta cualquier narración anterior
+
+            // Usamos "src" en vez de fetch()+blob a propósito: así el navegador
+            // pide el audio en streaming y puede empezar a reproducirlo apenas
+            // llegan los primeros bytes, en vez de esperar a que /api/tts mande
+            // el archivo completo (que es justo lo que ya optimizamos del lado
+            // del servidor).
+            const audio = new Audio(`/api/tts?texto=${encodeURIComponent(texto)}`);
+            audioNarracionActual = audio;
+
+            audio.onplay = () => {
+                btnDetenerNarracion.style.display = 'inline-block';
+                iniciarLipSyncPorAmplitud(audio);
+            };
+            // onerror también cubre el caso de que pause() interrumpa la narración.
+            audio.onended = finalizarNarracion;
+            audio.onerror = () => {
+                console.error('No se pudo generar/reproducir la voz de MarIA.');
+                finalizarNarracion();
+            };
+
+            audio.play().catch(finalizarNarracion);
+        }
+
+        // Botón "Detener a MarIA": corta la voz en seco.
         btnDetenerNarracion.onclick = () => {
-            window.speechSynthesis.cancel();
+            detenerNarracionActual();
+            finalizarNarracion();
         };
 
         let ultimaPreguntaAlumno = null; // para poder reintentar sin repetir todo

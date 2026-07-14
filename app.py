@@ -4,9 +4,10 @@ import sqlite3
 import time
 import unicodedata
 import uuid
+import httpx
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -116,6 +117,21 @@ if cliente_groq is None:
     print("AVISO: no se encontró GROQ_API_KEY.")
     print("El asistente de voz (/api/chat) NO va a funcionar hasta que")
     print("pongas tu clave en el archivo .env dentro de la carpeta bot/.")
+    print("=" * 70)
+
+# --- Voz de MarIA: Azure AI Speech (voces neuronales) ------------------------
+# La API key vive SOLO en el servidor (variable de entorno). El navegador
+# nunca la ve: le pide el audio ya generado a nuestro propio endpoint
+# /api/tts, y ese endpoint es el único que habla con Azure.
+AZURE_SPEECH_KEY = os.environ.get("AZURE_SPEECH_KEY", "")
+AZURE_SPEECH_REGION = os.environ.get("AZURE_SPEECH_REGION", "")
+VOZ_MARIA = "es-MX-CandelaNeural"
+
+if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
+    print("=" * 70)
+    print("AVISO: no se encontró AZURE_SPEECH_KEY / AZURE_SPEECH_REGION.")
+    print("El endpoint /api/tts (voz de MarIA) NO va a funcionar hasta que")
+    print("pongas esas variables en el archivo .env.")
     print("=" * 70)
 
 # Memoria de conversación POR SESIÓN (una por salón/pestaña), no global.
@@ -276,6 +292,82 @@ async def conversar(mensaje: MensajeAlumno):
         "sesion_id": sesion_id,
         "error": True,  # el frontend usa esto para ofrecer el botón de "reintentar"
     })
+
+
+def texto_a_ssml(texto: str) -> str:
+    """
+    Arma el SSML que espera Azure Speech, escapando los caracteres especiales
+    de XML del texto (que puede traer &, <, >, comillas, etc. si MarIA los usó).
+    """
+    texto_escapado = (
+        texto.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
+    return (
+        "<speak version='1.0' xml:lang='es-MX'>"
+        f"<voice xml:lang='es-MX' xml:gender='Female' name='{VOZ_MARIA}'>"
+        "<prosody rate='+8%'>"
+        f"{texto_escapado}"
+        "</prosody>"
+        "</voice></speak>"
+    )
+
+
+@app.get("/api/tts")
+async def sintetizar_voz(texto: str):
+    """
+    Manda el texto de la respuesta de MarIA a Azure Speech y va transmitiendo
+    el audio (mp3) al navegador según va llegando, en vez de esperar a que
+    Azure termine de generar el clip completo antes de mandar nada. Esto es
+    lo que deja que la narración arranque casi de inmediato en vez de
+    quedarse "pensando" unos segundos antes del primer sonido.
+
+    Es GET (y no POST con body) a propósito: así el <audio> del navegador
+    puede pedir el audio directamente por su "src" y reproducirlo en
+    streaming, en vez de tener que descargarlo completo primero con fetch.
+    """
+    if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
+        raise HTTPException(
+            status_code=500,
+            detail="Falta configurar AZURE_SPEECH_KEY / AZURE_SPEECH_REGION."
+        )
+
+    url = f"https://{AZURE_SPEECH_REGION}.tts.speech.microsoft.com/cognitiveservices/v1"
+    encabezados = {
+        "Ocp-Apim-Subscription-Key": AZURE_SPEECH_KEY,
+        "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+    }
+
+    cliente_http = httpx.AsyncClient(timeout=15.0)
+    try:
+        peticion = cliente_http.build_request(
+            "POST", url, content=texto_a_ssml(texto).encode("utf-8"), headers=encabezados
+        )
+        respuesta = await cliente_http.send(peticion, stream=True)
+    except httpx.RequestError as e:
+        await cliente_http.aclose()
+        raise HTTPException(status_code=502, detail=f"No se pudo contactar a Azure Speech: {e}")
+
+    if respuesta.status_code != 200:
+        cuerpo_error = await respuesta.aread()
+        await respuesta.aclose()
+        await cliente_http.aclose()
+        print(f"Azure Speech regresó {respuesta.status_code}: {cuerpo_error[:300]}")
+        raise HTTPException(status_code=502, detail="Azure Speech no pudo generar el audio.")
+
+    async def transmitir_audio():
+        try:
+            async for fragmento in respuesta.aiter_bytes():
+                yield fragmento
+        finally:
+            await respuesta.aclose()
+            await cliente_http.aclose()
+
+    return StreamingResponse(transmitir_audio(), media_type="audio/mpeg")
 
 
 # Sirve la página principal (biblioteca + reproductor + análisis + chat de voz).
