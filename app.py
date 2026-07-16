@@ -1,3 +1,5 @@
+import asyncio
+import base64
 import os
 import re
 import sqlite3
@@ -5,6 +7,7 @@ import time
 import unicodedata
 import uuid
 import httpx
+import azure.cognitiveservices.speech as speechsdk
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
@@ -87,6 +90,10 @@ app.mount("/videos", StaticFiles(directory=RUTA_VIDEOS), name="videos")
 # Modelos de face-api.js servidos localmente (pesan menos de 1 MB en total),
 # así la demo no depende del internet del salón/oficina el día de la presentación.
 app.mount("/models", StaticFiles(directory=RUTA_MODELOS), name="models")
+
+# Imagen base del avatar de MarIA + los recortes de boca (mismo personaje,
+# sacados de un video generado con Google Flow), servidos como estáticos.
+app.mount("/avatar", StaticFiles(directory=os.path.join(RUTA_FRONTEND, "avatar")), name="avatar")
 
 
 # --- Conexión a la base de datos ---------------------------------------------
@@ -368,6 +375,68 @@ async def sintetizar_voz(texto: str):
             await cliente_http.aclose()
 
     return StreamingResponse(transmitir_audio(), media_type="audio/mpeg")
+
+
+def _sintetizar_con_visemes(texto: str) -> tuple[bytes, list[list[int]]]:
+    """
+    Versión con Azure Speech SDK (no la API REST de arriba): además del
+    audio, junta los eventos de "viseme" que manda Azure -offset en ms +
+    id de forma de boca (0-21)- para poder mover la boca del avatar
+    sílaba por sílaba de verdad, en vez de adivinar por volumen.
+
+    Es una llamada bloqueante (el SDK usa bindings en C++, no asyncio),
+    por eso el endpoint la corre en un hilo aparte con asyncio.to_thread.
+    """
+    speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
+    speech_config.speech_synthesis_voice_name = VOZ_MARIA
+    speech_config.set_speech_synthesis_output_format(
+        speechsdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3
+    )
+
+    # audio_config=None: no reproduce localmente, solo nos interesan los
+    # bytes en result.audio_data para mandarlos al navegador.
+    synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
+
+    visemes: list[list[int]] = []
+    synthesizer.viseme_received.connect(
+        lambda evt: visemes.append([round(evt.audio_offset / 10000), evt.viseme_id])
+    )
+
+    result = synthesizer.speak_ssml_async(texto_a_ssml(texto)).get()
+
+    if result.reason == speechsdk.ResultReason.Canceled:
+        detalles = result.cancellation_details
+        print(f"Azure Speech (SDK) canceló la síntesis: {detalles.reason} - {detalles.error_details}")
+        raise HTTPException(status_code=502, detail="Azure Speech no pudo generar el audio.")
+
+    return result.audio_data, visemes
+
+
+@app.get("/api/tts-viseme")
+async def sintetizar_voz_con_visemes(texto: str):
+    """
+    Prototipo: igual que /api/tts pero usando el Speech SDK en vez de la
+    API REST, para obtener además los eventos de viseme y animar la boca
+    del avatar sílaba por sílaba en vez de por amplitud de audio.
+
+    A diferencia de /api/tts, este endpoint SÍ espera a que termine toda
+    la síntesis antes de responder (el SDK no permite ir transmitiendo el
+    audio en pedazos tan fácil como la API REST cruda), así que la
+    narración tarda un poco más en arrancar. Es un trade-off aceptado para
+    este prototipo. /api/tts se deja intacto sin usarse desde aquí.
+    """
+    if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
+        raise HTTPException(
+            status_code=500,
+            detail="Falta configurar AZURE_SPEECH_KEY / AZURE_SPEECH_REGION."
+        )
+
+    audio_bytes, visemes = await asyncio.to_thread(_sintetizar_con_visemes, texto)
+
+    return JSONResponse({
+        "audio_base64": base64.b64encode(audio_bytes).decode("ascii"),
+        "visemes": visemes,
+    })
 
 
 # Sirve la página principal (biblioteca + reproductor + análisis + chat de voz).

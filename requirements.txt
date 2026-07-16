@@ -4,3 +4,4 @@ groq
 httpx
 python-dotenv
 python-multipart
+azure-cognitiveservices-speech

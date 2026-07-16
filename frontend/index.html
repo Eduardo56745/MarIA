@@ -171,15 +171,100 @@
             gap: 6px;
             background: white;
         }
-        /* Antes tenía width/height fijos en px (no crecía aunque el
-           contenedor sí). Ahora escala con el contenedor: llena el alto
-           disponible del avatar-placeholder y mantiene su proporción
-           (viewBox 200x220) calculando el ancho solita. */
-        .avatar-svg {
+        /* El "wrap" escala con el contenedor igual que antes hacía el SVG:
+           llena el alto disponible del avatar-placeholder y mantiene su
+           propia proporción (595x768, la de avatar-base.png) calculando
+           el ancho solita. Los overlays de boca se posicionan en % sobre
+           este wrap, así quedan alineados sin importar el tamaño final. */
+        .avatar-imagen-wrap {
+            position: relative;
             flex: 1 1 auto;
             min-height: 0;
             width: auto;
             max-width: 92%;
+            aspect-ratio: 595 / 768;
+        }
+        .avatar-img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+        /* Recorte de la boca (mismo personaje/encuadre, generado aparte para
+           cada forma) que se sobrepone justo encima de la boca cerrada de
+           avatar-base.png. Posición en % calculada a partir de dónde cae la
+           boca dentro de avatar-base.png (595x768): left 30.25%, top 44.9%,
+           ancho 40.3%, alto 18.9% — ver generar_assets_v2.py.
+           Empiezan en opacity:0 y se cruzan con un fundido corto (en vez de
+           un display:none/block de golpe) para que el cambio de forma se
+           sienta menos "brincado". */
+        .avatar-boca-overlay {
+            position: absolute;
+            left: 30.25%;
+            top: 44.9%;
+            width: 40.3%;
+            height: 18.9%;
+            opacity: 0;
+            transition: opacity 90ms ease-in-out;
+        }
+        .avatar-boca-overlay.activa {
+            opacity: 1;
+        }
+        /* Recorte de los ojos (medio cerrados / cerrados), para el parpadeo
+           idle. Posición en % dentro de avatar-base.png: left 27.7%,
+           top 29.3%, ancho 48.7%, alto 13.7% — ver generar_assets_ojos.py.
+           El recorte empieza justo debajo de las cejas (para no duplicarlas
+           al sobreponerse) y termina sin tocar el marco de los lentes.
+           "abiertos" no tiene overlay: son los ojos que ya trae
+           avatar-base.png. Fundido más corto que el de la boca porque un
+           parpadeo real es rapidísimo. */
+        .avatar-ojos-overlay {
+            position: absolute;
+            left: 27.7%;
+            top: 29.3%;
+            width: 48.7%;
+            height: 13.7%;
+            opacity: 0;
+            transition: opacity 35ms linear;
+        }
+        .avatar-ojos-overlay.activa {
+            opacity: 1;
+        }
+
+        /* Miniatura circular de MarIA, en la esquina del video mientras se
+           reproduce una lección (ver mostrarAvatar/ocultarAvatar). Usa su
+           propia imagen cuadrada (avatar-mini-base.png, 595x595 — un
+           recorte de avatar-base.png que sí incluye la cara completa y
+           los hombros, no solo los ojos) así que no hace falta escalarla
+           ni recorrerla: llena el círculo tal cual. "bottom" queda arriba
+           de la barra de controles nativa del <video> para no taparla. */
+        .avatar-mini {
+            position: absolute;
+            right: 14px;
+            bottom: 70px;
+            width: 112px;
+            height: 112px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+            z-index: 5;
+        }
+        /* Misma posición en % que .avatar-ojos-overlay, pero recalculada
+           contra avatar-mini-base.png (595x595) en vez de avatar-base.png
+           (595x768) — la caja de los ojos en px es la misma, solo cambia
+           el alto de referencia. */
+        .avatar-mini-ojos-overlay {
+            position: absolute;
+            left: 27.7%;
+            top: 37.8%;
+            width: 48.7%;
+            height: 17.6%;
+            opacity: 0;
+            transition: opacity 35ms linear;
+        }
+        .avatar-mini-ojos-overlay.activa {
+            opacity: 1;
         }
         .avatar-mensaje {
             flex-shrink: 0;
@@ -517,95 +602,37 @@
             </div>
             <div class="contenedor-video modo-avatar">
                 <div id="avatar-placeholder" class="avatar-placeholder">
-                    <svg viewBox="0 0 200 220" class="avatar-svg" role="img" aria-label="Avatar de la Teacher MarIA">
-                        <defs>
-                            <linearGradient id="gradPiel" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#FBDCB8"/>
-                                <stop offset="100%" stop-color="#EFBB8C"/>
-                            </linearGradient>
-                            <linearGradient id="gradCabello" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#5A4130"/>
-                                <stop offset="100%" stop-color="#2B1D12"/>
-                            </linearGradient>
-                            <linearGradient id="gradBlazer" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#1E73C7"/>
-                                <stop offset="100%" stop-color="#0B3C6B"/>
-                            </linearGradient>
-                        </defs>
-
-                        <!-- Fondo circular suave, como una foto de perfil -->
-                        <circle cx="100" cy="105" r="98" fill="#E8F1FB"/>
-
-                        <!-- Hombros / saco -->
-                        <path d="M28 220 Q30 150 100 142 Q170 150 172 220 Z" fill="url(#gradBlazer)"/>
-                        <!-- Blusa, cuello en V -->
-                        <path d="M78 148 L100 186 L122 148 Q124 149 124 152 L100 178 L76 152 Q76 149 78 148Z" fill="white"/>
-                        <!-- Broche -->
-                        <circle cx="100" cy="174" r="7" fill="#D64545"/>
-
-                        <!-- Cuello -->
-                        <rect x="88" y="126" width="24" height="28" rx="8" fill="url(#gradPiel)"/>
-
-                        <!-- Orejas -->
-                        <circle cx="59" cy="99" r="8" fill="url(#gradPiel)"/>
-                        <circle cx="141" cy="99" r="8" fill="url(#gradPiel)"/>
-
-                        <!-- Cara -->
-                        <path d="M60 93 Q57 44 100 38 Q143 44 140 93 Q140 134 100 138 Q60 134 60 93Z" fill="url(#gradPiel)"/>
-                        <!-- Sombra suave lateral, para dar volumen a la cara -->
-                        <path d="M124 54 Q141 80 132 122 Q127 90 117 64Z" fill="#D89A66" opacity="0.25"/>
-
-                        <!-- Cabello: marco, mechones laterales y chongo -->
-                        <path d="M55 88 Q48 38 100 30 Q152 38 145 88 Q151 52 100 45 Q49 52 55 88Z" fill="url(#gradCabello)"/>
-                        <path d="M54 76 Q46 112 61 130 Q50 100 57 78Z" fill="url(#gradCabello)"/>
-                        <path d="M146 76 Q154 112 139 130 Q150 100 143 78Z" fill="url(#gradCabello)"/>
-                        <ellipse cx="100" cy="26" rx="20" ry="16" fill="url(#gradCabello)"/>
-
-                        <!-- Cejas -->
-                        <path d="M71 77 Q82 68 94 75" stroke="#2B1D12" stroke-width="3" fill="none" stroke-linecap="round"/>
-                        <path d="M106 75 Q118 68 129 77" stroke="#2B1D12" stroke-width="3" fill="none" stroke-linecap="round"/>
-
-                        <!-- Ojos abiertos: esclerótica, iris, pupila y brillo -->
-                        <g id="avatar-ojos-abiertos">
-                            <ellipse cx="83" cy="90" rx="8" ry="6" fill="white"/>
-                            <ellipse cx="117" cy="90" rx="8" ry="6" fill="white"/>
-                            <circle cx="83" cy="90" r="4" fill="#5A3A22"/>
-                            <circle cx="117" cy="90" r="4" fill="#5A3A22"/>
-                            <circle cx="84.5" cy="88.5" r="1.3" fill="white"/>
-                            <circle cx="118.5" cy="88.5" r="1.3" fill="white"/>
-                            <path d="M75 85 Q83 81 91 85" stroke="#2B1D12" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-                            <path d="M109 85 Q117 81 125 85" stroke="#2B1D12" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-                        </g>
-                        <!-- Ojos cerrados: se muestran brevemente al parpadear -->
-                        <g id="avatar-ojos-cerrados" style="display:none;">
-                            <path d="M75 90 Q83 94.5 91 90" stroke="#2B1D12" stroke-width="2" fill="none" stroke-linecap="round"/>
-                            <path d="M109 90 Q117 94.5 125 90" stroke="#2B1D12" stroke-width="2" fill="none" stroke-linecap="round"/>
-                        </g>
-
-                        <!-- Lentes -->
-                        <rect x="72" y="82" width="22" height="17" rx="7" fill="none" stroke="#0B3C6B" stroke-width="2.5"/>
-                        <rect x="106" y="82" width="22" height="17" rx="7" fill="none" stroke="#0B3C6B" stroke-width="2.5"/>
-                        <line x1="94" y1="89" x2="106" y2="89" stroke="#0B3C6B" stroke-width="2.5"/>
-                        <line x1="72" y1="86" x2="62" y2="82" stroke="#0B3C6B" stroke-width="2"/>
-                        <line x1="128" y1="86" x2="138" y2="82" stroke="#0B3C6B" stroke-width="2"/>
-
-                        <!-- Nariz -->
-                        <path d="M98 96 Q96 106 100 109 Q104 106 102 96" stroke="#D89A66" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-
-                        <!-- Mejillas -->
-                        <ellipse cx="74" cy="108" rx="8" ry="5" fill="#F4A97F" opacity="0.4"/>
-                        <ellipse cx="126" cy="108" rx="8" ry="5" fill="#F4A97F" opacity="0.4"/>
-
-                        <!-- Boca: dos estados, la animación alterna entre ellos con cada palabra hablada -->
-                        <path id="avatar-boca-cerrada" d="M86 118 Q100 126 114 118 Q100 123 86 118Z" fill="#B15D5D"/>
-                        <g id="avatar-boca-abierta" style="display:none;">
-                            <ellipse cx="100" cy="119" rx="10" ry="7" fill="#7A2E2E"/>
-                            <rect x="92" y="113" width="16" height="4" rx="2" fill="white"/>
-                        </g>
-                    </svg>
+                    <div class="avatar-imagen-wrap">
+                        <img src="/avatar/avatar-base.png" class="avatar-img" alt="Avatar de la Teacher MarIA">
+                        <!-- Overlays con la boca en otra forma, generados aparte con el
+                             mismo personaje/encuadre (ver generar_assets_v2.py), que se
+                             muestran en el momento exacto en que Azure dice que toca esa
+                             forma (ver iniciarLipSyncPorViseme). "cerrada" no necesita
+                             overlay: es la boca que ya trae avatar-base.png. -->
+                        <img id="avatar-boca-media" class="avatar-boca-overlay" src="/avatar/avatar-boca-media.png" alt="">
+                        <img id="avatar-boca-ancha" class="avatar-boca-overlay" src="/avatar/avatar-boca-ancha.png" alt="">
+                        <img id="avatar-boca-redonda" class="avatar-boca-overlay" src="/avatar/avatar-boca-redonda.png" alt="">
+                        <!-- Overlays del parpadeo idle (independiente de la boca). "abiertos"
+                             no tiene overlay: son los ojos que ya trae avatar-base.png. -->
+                        <img class="avatar-ojos-overlay capa-ojos-medio" src="/avatar/avatar-ojos-medio.png" alt="">
+                        <img class="avatar-ojos-overlay capa-ojos-cerrados" src="/avatar/avatar-ojos-cerrados.png" alt="">
+                    </div>
                     <p class="avatar-mensaje">¡Hola! Elige una lección o pregúntame algo 🙋</p>
                 </div>
                 <video id="video-player" class="video-leccion" controls style="display:none;">Tu navegador no soporta el video.</video>
+                <!-- Miniatura de MarIA en la esquina mientras se reproduce un video:
+                     mismo mecanismo de parpadeo que el avatar grande (las capas
+                     .capa-ojos-medio/.capa-ojos-cerrados se manejan juntas desde
+                     mostrarFormaOjos), solo que recortada en círculo (con su
+                     propia imagen cuadrada, avatar-mini-base.png, para que se
+                     vea la cara completa y no un zoom exagerado) y sin boca
+                     (no habla mientras el video suena). Se muestra/oculta desde
+                     mostrarAvatar()/ocultarAvatar(). -->
+                <div id="avatar-mini" class="avatar-mini" style="display:none;">
+                    <img src="/avatar/avatar-mini-base.png" class="avatar-img" alt="">
+                    <img class="avatar-mini-ojos-overlay capa-ojos-medio" src="/avatar/avatar-ojos-medio.png" alt="">
+                    <img class="avatar-mini-ojos-overlay capa-ojos-cerrados" src="/avatar/avatar-ojos-cerrados.png" alt="">
+                </div>
             </div>
 
             <div class="asistente">
@@ -651,6 +678,7 @@
         const videoPlayer = document.getElementById('video-player');
         const tituloVideo = document.getElementById('titulo-video');
         const avatarPlaceholder = document.getElementById('avatar-placeholder');
+        const avatarMini = document.getElementById('avatar-mini');
         const contenedorVideo = document.querySelector('.contenedor-video');
 
         // Avatar de respaldo: se muestra cuando no hay ningún video corriendo
@@ -658,9 +686,13 @@
         // el reproductor en negro. El contenedor cambia de tamaño según el
         // modo: más compacto y en blanco para el avatar, tamaño de video
         // normal (16:8, fondo negro) cuando sí hay un video reproduciéndose.
+        // Mientras el video suena, la miniatura de MarIA (avatar-mini) queda
+        // flotando en la esquina, parpadeando, para dar sensación de que
+        // "sigue ahí" sin taparle la pantalla al video.
         function mostrarAvatar() {
             avatarPlaceholder.style.display = 'flex';
             videoPlayer.style.display = 'none';
+            avatarMini.style.display = 'none';
             contenedorVideo.classList.add('modo-avatar');
             videoPlayer.pause();
             tituloVideo.innerText = "Selecciona una lección";
@@ -669,6 +701,7 @@
         function ocultarAvatar() {
             avatarPlaceholder.style.display = 'none';
             videoPlayer.style.display = 'block';
+            avatarMini.style.display = 'block';
             contenedorVideo.classList.remove('modo-avatar');
             btnCerrarVideo.style.display = 'flex';
         }
@@ -843,82 +876,71 @@
         let videoSilenciadoPorNarracion = false;
 
         // --- Animación de boca del avatar mientras habla ---------------------
-        // Ahora el audio ya viene pregrabado desde Azure Speech (/api/tts), así
-        // que no existe un evento "onboundary" por palabra como con la voz del
-        // navegador. En su lugar, analizamos el volumen real del audio en
-        // reproducción con Web Audio API (AnalyserNode) y abrimos/cerramos la
-        // boca según la amplitud, cuadro a cuadro.
-        const bocaCerrada = document.getElementById('avatar-boca-cerrada');
-        const bocaAbierta = document.getElementById('avatar-boca-abierta');
-        let contextoAudio = null;
+        // /api/tts-viseme manda, junto con el audio, la lista real de eventos
+        // de viseme que da Azure Speech (offset en ms + id de forma de boca
+        // 0-21, ver texto_a_ssml/_sintetizar_con_visemes en app.py). Con eso
+        // movemos la boca sílaba por sílaba de verdad, en vez de adivinar por
+        // volumen como se hacía antes.
+        // "cerrada" no tiene overlay: es la boca que ya trae avatar-base.png,
+        // así que mostrarla es simplemente ocultar los overlays de encima.
+        const formasBoca = {
+            ancha: document.getElementById('avatar-boca-ancha'),
+            media: document.getElementById('avatar-boca-media'),
+            redonda: document.getElementById('avatar-boca-redonda'),
+        };
         let idAnimacionBoca = null;
-        let temporizadorCierreBoca = null;
 
-        function cerrarBoca() {
-            bocaCerrada.style.display = 'block';
-            bocaAbierta.style.display = 'none';
-        }
-        function abrirBocaBreve() {
-            bocaCerrada.style.display = 'none';
-            bocaAbierta.style.display = 'block';
-            clearTimeout(temporizadorCierreBoca);
-            temporizadorCierreBoca = setTimeout(cerrarBoca, 130);
+        // Agrupa los 22 viseme id de Azure en las 4 formas que tenemos
+        // generadas para este personaje (cerrada/media/ancha/redonda).
+        function mapearVisemeAForma(visemeId) {
+            if (visemeId === 0 || visemeId === 21) return 'cerrada';
+            if ([1, 2, 3, 4, 5, 9, 10, 11].includes(visemeId)) return 'ancha';
+            if (visemeId === 7 || visemeId === 8) return 'redonda';
+            return 'media';
         }
 
-        function iniciarLipSyncPorAmplitud(elementoAudio) {
-            if (!contextoAudio) {
-                contextoAudio = new (window.AudioContext || window.webkitAudioContext)();
+        function mostrarFormaBoca(clave) {
+            for (const nombre in formasBoca) {
+                formasBoca[nombre].classList.toggle('activa', nombre === clave);
             }
-            if (contextoAudio.state === 'suspended') contextoAudio.resume();
+        }
 
-            const fuente = contextoAudio.createMediaElementSource(elementoAudio);
-            const analizador = contextoAudio.createAnalyser();
-            analizador.fftSize = 256;
-            analizador.smoothingTimeConstant = 0.2;
-            fuente.connect(analizador);
-            analizador.connect(contextoAudio.destination);
+        function iniciarLipSyncPorViseme(elementoAudio, visemes) {
+            const ordenados = [...visemes].sort((a, b) => a[0] - b[0]);
+            let indice = 0;
+            let formaActual = 'cerrada';
+            let relojUltimoCambio = 0;
+            mostrarFormaBoca(formaActual);
 
-            const datos = new Uint8Array(analizador.frequencyBinCount);
+            // Azure manda visemes cada 50-100ms, más rápido de lo que una
+            // boca real cambia de forma de manera perceptible: mostrar cada
+            // uno tal cual se ve como un parpadeo/brinco falso. Por eso
+            // exigimos un mínimo de tiempo entre cambios de forma (aunque
+            // eso signifique saltarnos algún viseme intermedio) y usamos
+            // siempre la forma más reciente dentro de esa ventana.
+            const MINIMO_MS_ENTRE_CAMBIOS = 100;
 
-            // El volumen de una voz casi nunca cae a cero entre sílabas (queda
-            // "ruido" espectral de fondo), así que comparar contra un promedio
-            // reciente no sirve: el promedio se pone al día con la voz casi de
-            // inmediato y el umbral relativo deja de dispararse. En su lugar
-            // detectamos "ataques": subidas bruscas de volumen respecto al
-            // valle más reciente, que es justo el inicio de cada sílaba.
-            // Cada ataque abre la boca un instante corto (abrirBocaBreve), como
-            // antes hacía cada límite de palabra de la voz del navegador.
-            let valle = 0; // sigue los mínimos recientes: baja al toque, sube despacio
-            let ultimoDisparo = 0;
-            const UMBRAL_SILENCIO = 8;   // por debajo de esto, no hay voz de verdad
-            const SUBIDA_MINIMA = 14;    // cuánto debe subir sobre el valle para contar como sílaba nueva
-            const DEBOUNCE_MS = 90;      // no disparar dos veces más seguido que esto
-
-            // Usamos setInterval y no requestAnimationFrame a propósito: rAF
-            // se pausa por completo en cuanto la pestaña pierde el foco o
-            // queda oculta detrás de otra ventana, y ahí la boca se quedaría
+            // setInterval y no requestAnimationFrame a propósito: rAF se
+            // pausa por completo en cuanto la pestaña pierde el foco o queda
+            // oculta detrás de otra ventana, y ahí la boca se quedaría
             // congelada aunque la voz siguiera sonando.
             idAnimacionBoca = setInterval(() => {
-                analizador.getByteFrequencyData(datos);
-                let suma = 0;
-                for (let i = 0; i < datos.length; i++) suma += datos[i];
-                const promedio = suma / datos.length;
-
-                if (promedio < valle) {
-                    valle = promedio;
-                } else {
-                    valle += (promedio - valle) * 0.02;
+                const ahoraMs = elementoAudio.currentTime * 1000;
+                let formaMasReciente = null;
+                while (indice < ordenados.length && ordenados[indice][0] <= ahoraMs) {
+                    formaMasReciente = mapearVisemeAForma(ordenados[indice][1]);
+                    indice++;
                 }
-
-                const ahora = performance.now();
-                if (promedio < UMBRAL_SILENCIO) {
-                    cerrarBoca(); // pausa real (silencio de verdad): cerramos ya
-                } else if (
-                    (promedio - valle) > SUBIDA_MINIMA &&
-                    (ahora - ultimoDisparo) > DEBOUNCE_MS
-                ) {
-                    ultimoDisparo = ahora;
-                    abrirBocaBreve();
+                if (formaMasReciente !== null && formaMasReciente !== formaActual) {
+                    const ahoraReloj = performance.now();
+                    if (ahoraReloj - relojUltimoCambio >= MINIMO_MS_ENTRE_CAMBIOS) {
+                        mostrarFormaBoca(formaMasReciente);
+                        formaActual = formaMasReciente;
+                        relojUltimoCambio = ahoraReloj;
+                    }
+                }
+                if (indice >= ordenados.length && elementoAudio.ended) {
+                    mostrarFormaBoca('cerrada');
                 }
             }, 40);
         }
@@ -926,21 +948,26 @@
         function detenerAnimacionBoca() {
             if (idAnimacionBoca) clearInterval(idAnimacionBoca);
             idAnimacionBoca = null;
-            clearTimeout(temporizadorCierreBoca);
-            cerrarBoca();
+            mostrarFormaBoca('cerrada');
         }
         // ----------------------------------------------------------------------
 
         // --- Parpadeo del avatar (idle, independiente de si está hablando) ----
-        const ojosAbiertos = document.getElementById('avatar-ojos-abiertos');
-        const ojosCerrados = document.getElementById('avatar-ojos-cerrados');
+        // "abiertos" no tiene overlay (son los ojos que ya trae avatar-base.png),
+        // así que un parpadeo es: abiertos -> medio -> cerrados -> medio -> abiertos.
+        // Por clase (no por id): así el mismo parpadeo mueve a la vez las capas
+        // del avatar grande Y las de la miniatura de la esquina del video.
+        const capasOjosMedio = document.querySelectorAll('.capa-ojos-medio');
+        const capasOjosCerrados = document.querySelectorAll('.capa-ojos-cerrados');
+        function mostrarFormaOjos(clave) {
+            capasOjosMedio.forEach(el => el.classList.toggle('activa', clave === 'medio'));
+            capasOjosCerrados.forEach(el => el.classList.toggle('activa', clave === 'cerrados'));
+        }
         function parpadear() {
-            ojosAbiertos.style.display = 'none';
-            ojosCerrados.style.display = 'block';
-            setTimeout(() => {
-                ojosAbiertos.style.display = 'block';
-                ojosCerrados.style.display = 'none';
-            }, 130);
+            mostrarFormaOjos('medio');
+            setTimeout(() => mostrarFormaOjos('cerrados'), 45);
+            setTimeout(() => mostrarFormaOjos('medio'), 90);
+            setTimeout(() => mostrarFormaOjos('abiertos'), 135);
         }
         function programarParpadeo() {
             const espera = 2600 + Math.random() * 3200; // entre 2.6s y 5.8s
@@ -1007,26 +1034,38 @@
                 videoSilenciadoPorNarracion = true;
             }
 
-            // Usamos "src" en vez de fetch()+blob a propósito: así el navegador
-            // pide el audio en streaming y puede empezar a reproducirlo apenas
-            // llegan los primeros bytes, en vez de esperar a que /api/tts mande
-            // el archivo completo (que es justo lo que ya optimizamos del lado
-            // del servidor).
-            const audio = new Audio(`/api/tts?texto=${encodeURIComponent(texto)}`);
-            audioNarracionActual = audio;
+            // Prototipo: /api/tts-viseme regresa JSON (audio en base64 + lista
+            // de visemes), no streaming directo por "src" como antes. Por eso
+            // hay que esperar a que termine toda la síntesis antes de poder
+            // reproducir algo (arranca un poco más tarde que con /api/tts).
+            fetch(`/api/tts-viseme?texto=${encodeURIComponent(texto)}`)
+                .then(respuesta => {
+                    if (!respuesta.ok) throw new Error('Azure Speech no pudo generar el audio.');
+                    return respuesta.json();
+                })
+                .then(datos => {
+                    const bytes = Uint8Array.from(atob(datos.audio_base64), c => c.charCodeAt(0));
+                    const blob = new Blob([bytes], { type: 'audio/mpeg' });
+                    const audio = new Audio(URL.createObjectURL(blob));
+                    audioNarracionActual = audio;
 
-            audio.onplay = () => {
-                botones.btnDetener.style.display = 'flex';
-                iniciarLipSyncPorAmplitud(audio);
-            };
-            // onerror también cubre el caso de que pause() interrumpa la narración.
-            audio.onended = finalizarNarracion;
-            audio.onerror = () => {
-                console.error('No se pudo generar/reproducir la voz de MarIA.');
-                finalizarNarracion();
-            };
+                    audio.onplay = () => {
+                        botones.btnDetener.style.display = 'flex';
+                        iniciarLipSyncPorViseme(audio, datos.visemes);
+                    };
+                    // onerror también cubre el caso de que pause() interrumpa la narración.
+                    audio.onended = finalizarNarracion;
+                    audio.onerror = () => {
+                        console.error('No se pudo generar/reproducir la voz de MarIA.');
+                        finalizarNarracion();
+                    };
 
-            audio.play().catch(finalizarNarracion);
+                    audio.play().catch(finalizarNarracion);
+                })
+                .catch(err => {
+                    console.error('No se pudo generar la voz de MarIA.', err);
+                    finalizarNarracion();
+                });
         }
 
         let ultimaPreguntaAlumno = null; // para poder reintentar sin repetir todo
