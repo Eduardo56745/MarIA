@@ -212,11 +212,11 @@
         }
         .btn-eliminar-item:hover { background: rgba(214, 69, 69, 0.15); }
 
-        /* Tope de ~3 tarjetas visibles (cada una mide ~68px con su margen):
+        /* Tope de 2 tarjetas visibles (cada una mide ~68px con su margen):
            en vez de desplegar la lista completa y empujar el resto del
            panel, esto la dejar en un scroll propio. */
         #contenedor-lista, #contenedor-historial-chats {
-            max-height: 210px;
+            max-height: 144px;
             overflow-y: auto;
             /* Sin esto, el navegador convierte overflow-x (que se queda en
                "visible") también en "auto" en cuanto overflow-y no es
@@ -224,6 +224,39 @@
             overflow-x: hidden;
         }
         .mensaje-lista-vacia { color: var(--texto-suave); font-size: 13.5px; text-align: center; padding: 8px 0; }
+
+        /* Videos sugeridos: a diferencia de Biblioteca/Historial (listas
+           verticales), esta es una tira horizontal que se desliza con el
+           dedo/scroll hacia la derecha en vez de apilarse hacia abajo, para
+           no competirle altura al resto de la columna. */
+        #contenedor-sugeridos {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 4px;
+        }
+        #contenedor-sugeridos .item-lista {
+            flex: 0 0 auto;
+            width: 132px;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 0;
+        }
+        /* El panel vive dentro de "Análisis Cognitivo" (ver panel vision),
+           debajo del botón de Debug: no es su propia tarjeta ".panel"
+           (se vería como una caja dentro de otra caja), solo una sección
+           más dentro de esa columna, separada con un poco de aire arriba. */
+        .panel-sugeridos {
+            margin-top: 15px;
+            text-align: left;
+        }
+        .panel-sugeridos h3 {
+            margin: 0 0 8px;
+            font-size: 15px;
+            color: var(--azul-oscuro);
+        }
 
         .video-leccion { width: 100%; height: 100%; border-radius: 10px; background: #000; }
 
@@ -476,6 +509,36 @@
         }
         .btn-desplegable[aria-expanded="true"] .flecha-desplegable { transform: rotate(180deg); }
         .contenido-desplegable { margin-top: 12px; }
+
+        /* Fila del encabezado de Biblioteca/Historial de chats: el botón
+           desplegable (ver arriba) + un botón circular "+" al lado, en vez
+           del botón largo de "Agregar video"/"Nuevo chat" que antes iba
+           aparte, debajo. */
+        .fila-encabezado-panel {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .fila-encabezado-panel .btn-desplegable { width: auto; flex: 1; min-width: 0; }
+        .btn-circular-agregar {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 1.5px solid var(--azul-oscuro);
+            color: var(--azul-oscuro);
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .btn-circular-agregar:hover { background: var(--azul-medio); color: white; border-color: var(--azul-medio); }
         .control-grupo input {
             width: 60px; padding: 6px; margin-left: 10px;
             border-radius: 6px; border: 1px solid #B7CDE5;
@@ -685,6 +748,22 @@
         }
         .controles-narracion-burbuja button:hover { background: var(--azul-medio); color: white; }
 
+        /* Botón de texto "▶ Reproducir video", junto al ⏹/↻: a diferencia de
+           esos (circulares, 26x26, escondidos por default y prendidos por
+           JS), este es un botón normal, siempre visible en cualquier burbuja
+           que traiga un video (ver agregarBurbuja). Mismo alto para que se
+           vea alineado con ellos en la fila. */
+        .controles-narracion-burbuja .btn-reproducir-video-burbuja {
+            display: flex;
+            width: auto;
+            height: 26px;
+            border-radius: 13px;
+            padding: 0 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
         .input-texto-asistente {
             flex: 1;
             padding: 11px 14px;
@@ -743,23 +822,26 @@
             </div>
 
             <div class="panel">
-                <button type="button" class="btn-desplegable" data-target="contenido-biblioteca" aria-expanded="false">
-                    <span>📚 Biblioteca</span>
-                    <span class="flecha-desplegable">▾</span>
-                </button>
-                <a href="/agregar" style="display:block; text-align:center; background:var(--azul-claro); color:var(--azul-oscuro); text-decoration:none; font-weight:600; font-size:13.5px; padding:9px; border-radius:8px; margin-top:12px;">
-                    ➕ Agregar video
-                </a>
+                <div class="fila-encabezado-panel">
+                    <button type="button" class="btn-desplegable" data-target="contenido-biblioteca" aria-expanded="false">
+                        <span>📚 Biblioteca</span>
+                        <span class="flecha-desplegable">▾</span>
+                    </button>
+                    <a href="/agregar" class="btn-circular-agregar" title="Agregar video">➕</a>
+                </div>
                 <div id="contenido-biblioteca" class="contenido-desplegable" style="display:none;">
                     <div id="contenedor-lista">Cargando videos...</div>
                 </div>
             </div>
 
             <div class="panel">
-                <button type="button" class="btn-desplegable" data-target="contenido-historial-chats" aria-expanded="false">
-                    <span>🗨️ Historial de chats</span>
-                    <span class="flecha-desplegable">▾</span>
-                </button>
+                <div class="fila-encabezado-panel">
+                    <button type="button" class="btn-desplegable" data-target="contenido-historial-chats" aria-expanded="false">
+                        <span>🗨️ Historial de chats</span>
+                        <span class="flecha-desplegable">▾</span>
+                    </button>
+                    <button type="button" id="btn-nuevo-chat" class="btn-circular-agregar" title="Nuevo chat">➕</button>
+                </div>
                 <div id="contenido-historial-chats" class="contenido-desplegable" style="display:none;">
                     <div id="contenedor-historial-chats"></div>
                 </div>
@@ -842,6 +924,15 @@
                     <p id="debug-recursos" style="font-size: 11.5px; color: var(--texto-suave); margin-top: 4px; font-family: monospace;"></p>
                 </div>
             </div>
+
+            <!-- Solo se muestra mientras hay un chat activo que ya trajo al
+                 menos un video (ver actualizarContextoSugeridos). Va aquí,
+                 debajo de Debug, para no ocuparle espacio permanente a la
+                 columna izquierda (Ajustes/Biblioteca/Historial). -->
+            <div class="panel-sugeridos" id="panel-sugeridos" style="display:none;">
+                <h3>🎯 Videos sugeridos</h3>
+                <div id="contenedor-sugeridos"></div>
+            </div>
         </div>
     </main>
 
@@ -860,6 +951,8 @@
     <script>
         const contenedorLista = document.getElementById('contenedor-lista');
         const contenedorHistorialChats = document.getElementById('contenedor-historial-chats');
+        const panelSugeridos = document.getElementById('panel-sugeridos');
+        const contenedorSugeridos = document.getElementById('contenedor-sugeridos');
         const videoPlayer = document.getElementById('video-player');
         const tituloVideo = document.getElementById('titulo-video');
         const avatarPlaceholder = document.getElementById('avatar-placeholder');
@@ -904,6 +997,100 @@
             videoPlayer.currentTime = 0;
             limpiarAvisoBajaAtencion();
             videoPlayer.play();
+        }
+
+        // --- Videos sugeridos ---------------------------------------------------
+        // Catálogo completo de /api/videos, guardado aquí (lo llena cargarVideos)
+        // para no tener que volver a pedirlo cada vez que armamos la lista de
+        // sugeridos. materiaContextoSugeridos es la materia del último video que
+        // trajo el chat activo (null = no hay chat con video todavía, panel
+        // escondido); videosSugeridosExcluidos son los nombres de archivo que ya
+        // se mostraron en esta conversación (o se jugaron a mano), para no
+        // repetirlos como "sugeridos".
+        let catalogoVideos = [];
+        let materiaContextoSugeridos = null;
+        let videosSugeridosExcluidos = new Set();
+
+        function nombreArchivoDe(video) {
+            return video.ruta_archivo.split('\\').pop().split('/').pop();
+        }
+
+        // Arranca un video (de la Biblioteca o de Videos sugeridos) igual que
+        // como lo hacía el onclick de cargarVideos, y de paso lo marca como
+        // "ya mostrado" para que deje de aparecer como sugerido.
+        function reproducirVideoDesdeLista(video) {
+            const nombreArchivo = nombreArchivoDe(video);
+            tituloVideo.innerText = `${video.materia}: ${video.subtema}`;
+            ocultarAvatar();
+            videoPlayer.src = `/videos/${nombreArchivo}`;
+            videoPlayer.play();
+            limpiarAvisoBajaAtencion();
+            marcarVideoComoMostrado(nombreArchivo);
+        }
+
+        function marcarVideoComoMostrado(nombreArchivo) {
+            videosSugeridosExcluidos.add(nombreArchivo);
+            renderVideosSugeridos();
+        }
+
+        // La llama el botón "▶ Reproducir video" de cualquier burbuja (ver
+        // agregarBurbuja), para volver a ver ese video puntual sin importar
+        // cuánto haya avanzado el chat desde entonces.
+        function reproducirVideoPorNombre(nombreArchivo) {
+            const video = catalogoVideos.find((v) => nombreArchivoDe(v) === nombreArchivo);
+            if (video) {
+                reproducirVideoDesdeLista(video);
+                return;
+            }
+            // El video ya no está en el catálogo (se borró de la Biblioteca)
+            // pero el archivo puede seguir en disco: igual lo intentamos.
+            tituloVideo.innerText = "Video de esta respuesta";
+            ocultarAvatar();
+            videoPlayer.src = `/videos/${nombreArchivo}`;
+            videoPlayer.currentTime = 0;
+            videoPlayer.play();
+            limpiarAvisoBajaAtencion();
+        }
+
+        // La llama preguntarAMarIA cuando la respuesta trae un video nuevo:
+        // ese video fija de qué materia son las sugerencias (hasta que el
+        // chat traiga otro), y de paso se excluye de la lista.
+        function actualizarContextoSugeridos(nombreArchivo) {
+            const video = catalogoVideos.find((v) => nombreArchivoDe(v) === nombreArchivo);
+            if (video) materiaContextoSugeridos = video.materia;
+            marcarVideoComoMostrado(nombreArchivo);
+        }
+
+        function ocultarVideosSugeridos() {
+            materiaContextoSugeridos = null;
+            videosSugeridosExcluidos = new Set();
+            panelSugeridos.style.display = 'none';
+        }
+
+        function renderVideosSugeridos() {
+            if (!materiaContextoSugeridos) {
+                panelSugeridos.style.display = 'none';
+                return;
+            }
+
+            const sugeridos = catalogoVideos.filter((video) =>
+                video.materia === materiaContextoSugeridos && !videosSugeridosExcluidos.has(nombreArchivoDe(video))
+            );
+
+            if (sugeridos.length === 0) {
+                panelSugeridos.style.display = 'none';
+                return;
+            }
+
+            panelSugeridos.style.display = 'block';
+            contenedorSugeridos.innerHTML = '';
+            sugeridos.forEach((video) => {
+                const div = document.createElement('div');
+                div.className = 'item-lista';
+                div.innerHTML = `<div><strong>${video.subtema}</strong><br><small>${video.materia}</small></div>`;
+                div.onclick = () => reproducirVideoDesdeLista(video);
+                contenedorSugeridos.appendChild(div);
+            });
         }
 
         // La "✕" solo corta el video y regresa al avatar de MarIA; la
@@ -986,6 +1173,8 @@
                 const respuesta = await fetch('/api/videos');
                 const videos = await respuesta.json();
                 contenedorLista.innerHTML = '';
+                catalogoVideos = videos;
+                renderVideosSugeridos();
 
                 videos.forEach(video => {
                     const div = document.createElement('div');
@@ -995,15 +1184,7 @@
                     info.innerHTML = `<strong>${video.subtema}</strong><br><small>${video.materia}</small>`;
                     div.appendChild(info);
 
-                    div.onclick = () => {
-                        tituloVideo.innerText = `${video.materia}: ${video.subtema}`;
-                        const nombreArchivo = video.ruta_archivo.split('\\').pop().split('/').pop();
-                        ocultarAvatar();
-                        videoPlayer.src = `/videos/${nombreArchivo}`;
-                        videoPlayer.play();
-                        // Nuevo video: reseteamos cualquier aviso de atención baja.
-                        limpiarAvisoBajaAtencion();
-                    };
+                    div.onclick = () => reproducirVideoDesdeLista(video);
 
                     const btnEliminar = document.createElement('button');
                     btnEliminar.type = 'button';
@@ -1127,6 +1308,7 @@
             listaConversacion.innerHTML = '<p class="mensaje-vacio">Presiona el micrófono o escribe tu consulta para hacerle una pregunta a MarIA.</p>';
             tituloAsistente.style.display = '';
             actualizarEstadoAsistente(MENSAJE_ESTADO_IDLE);
+            ocultarVideosSugeridos();
         }
 
         // Se llama justo después de cada respuesta exitosa de MarIA (ver
@@ -1153,6 +1335,48 @@
             renderHistorialChats();
         }
 
+        // Estado del video (qué archivo, en qué segundo, pausado o no) de
+        // cada chat guardado, para que al volver a ese chat todo se vea
+        // igual a como se dejó. Se guarda en la propia entrada del chat
+        // (entrada.estadoVideo) justo antes de dejarlo (ver
+        // cargarChatDesdeHistorial), leyendo el estado real del reproductor.
+        function capturarEstadoVideoActual() {
+            if (contenedorVideo.classList.contains('modo-avatar') || !videoPlayer.src) return null;
+            return {
+                nombreArchivo: videoPlayer.src.split('/').pop(),
+                tiempo: videoPlayer.currentTime,
+                pausado: videoPlayer.paused,
+            };
+        }
+
+        function guardarEstadoVideoDeChat(idChat) {
+            if (!idChat) return;
+            const entrada = historialChats.find((chat) => chat.id === idChat);
+            if (!entrada) return;
+            entrada.estadoVideo = capturarEstadoVideoActual();
+            guardarHistorialChats();
+        }
+
+        // Deja el reproductor tal como estaba cuando se dejó este chat: el
+        // mismo video, en el mismo segundo, sonando o pausado según toque.
+        // Si el chat nunca trajo un video (o se cerró antes de dejarlo),
+        // simplemente vuelve al avatar.
+        function restaurarEstadoVideoDeChat(entrada) {
+            const estado = entrada.estadoVideo;
+            if (!estado) {
+                mostrarAvatar();
+                return;
+            }
+            tituloVideo.innerText = "MarIA está explicando...";
+            ocultarAvatar();
+            limpiarAvisoBajaAtencion();
+            videoPlayer.src = `/videos/${estado.nombreArchivo}`;
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                videoPlayer.currentTime = estado.tiempo || 0;
+                if (!estado.pausado) videoPlayer.play();
+            }, { once: true });
+        }
+
         // Carga un chat guardado como la conversación activa: reproduce sus
         // burbujas (con controles de narración, para poder repetir
         // respuestas viejas) y retoma su sesionId, así que si el servidor no
@@ -1161,17 +1385,25 @@
             const entrada = historialChats.find((chat) => chat.id === idChat);
             if (!entrada) return;
 
+            // Antes de soltar el chat activo, guardamos dónde se quedó su
+            // video (si tenía uno sonando), para poder retomarlo tal cual
+            // si el profe vuelve a él más tarde.
+            guardarEstadoVideoDeChat(sesionId);
+
             reiniciarConversacionActiva();
             sesionId = entrada.id;
-            mostrarAvatar();
             entrada.mensajes.forEach((mensaje) => {
                 if (mensaje.quien === 'maria') {
                     const botones = agregarBurbuja(mensaje.texto, 'maria', mensaje.nombreVideo, false, true);
                     botones.btnRepetir.style.display = 'flex';
+                    // Reconstruye "Videos sugeridos" con lo que ya se mostró
+                    // en este chat guardado (el último video fija la materia).
+                    if (mensaje.nombreVideo) actualizarContextoSugeridos(mensaje.nombreVideo);
                 } else {
                     agregarBurbuja(mensaje.texto, 'alumno');
                 }
             });
+            restaurarEstadoVideoDeChat(entrada);
         }
 
         function eliminarChatDelHistorial(idChat) {
@@ -1220,6 +1452,19 @@
             });
         }
         renderHistorialChats();
+
+        // "+" junto a "Historial de chats": deja la conversación activa en
+        // blanco para empezar una de cero, igual que si se hubiera borrado
+        // el chat activo (ver eliminarChatDelHistorial), pero sin borrar
+        // nada. Antes de soltar el chat que estaba activo, guarda dónde se
+        // quedó su video (misma lógica que al cambiar a un chat del
+        // historial, ver cargarChatDesdeHistorial), para poder retomarlo
+        // tal cual si el profe vuelve a él después.
+        document.getElementById('btn-nuevo-chat').onclick = () => {
+            guardarEstadoVideoDeChat(sesionId);
+            reiniciarConversacionActiva();
+            mostrarAvatar();
+        };
         // -------------------------------------------------------------------------
 
         // conControlesNarracion: true cuando esta burbuja de MarIA se va a
@@ -1289,6 +1534,20 @@
 
                 contenedorControles.appendChild(btnDetener);
                 contenedorControles.appendChild(btnRepetir);
+
+                // Si esta burbuja trae un video, se puede volver a ver desde
+                // aquí en cualquier momento (así el chat haya avanzado o el
+                // profe haya cambiado a otro chat mientras tanto).
+                if (nombreVideo) {
+                    const btnReproducirVideo = document.createElement('button');
+                    btnReproducirVideo.type = 'button';
+                    btnReproducirVideo.className = 'btn-reproducir-video-burbuja';
+                    btnReproducirVideo.title = 'Reproducir este video';
+                    btnReproducirVideo.innerText = '▶ Reproducir video';
+                    btnReproducirVideo.onclick = () => reproducirVideoPorNombre(nombreVideo);
+                    contenedorControles.appendChild(btnReproducirVideo);
+                }
+
                 burbuja.appendChild(contenedorControles);
             }
 
@@ -1566,6 +1825,14 @@
                 // responder"), la guardamos en el historial de chats.
                 if (!datos.error) {
                     registrarIntercambioEnHistorial(textoAlumno, datos.respuesta, datos.video);
+                }
+
+                // Video nuevo en esta respuesta: actualiza "Videos sugeridos"
+                // (materia de referencia + lo excluye a él mismo). Si esta
+                // respuesta no trae video, dejamos las sugerencias como
+                // estaban (siguen siendo del último tema con video).
+                if (datos.video) {
+                    actualizarContextoSugeridos(datos.video);
                 }
 
                 // Si el backend agotó sus reintentos y regresó el mensaje de

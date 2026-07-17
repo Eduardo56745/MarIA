@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import mimetypes
 import os
 import re
 import sqlite3
@@ -8,7 +9,7 @@ import unicodedata
 import uuid
 import httpx
 import azure.cognitiveservices.speech as speechsdk
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, File, Request, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from pydantic import BaseModel
@@ -82,10 +83,70 @@ def inicializar_base_datos():
 # Se ejecuta una sola vez, al arrancar el servidor (no en cada request).
 inicializar_base_datos()
 
-# Montamos la carpeta de videos como archivos estáticos.
-# Como ya corrimos inicializar_base_datos() antes, la carpeta seguro existe
-# (si no, StaticFiles truena al arrancar el servidor).
-app.mount("/videos", StaticFiles(directory=RUTA_VIDEOS), name="videos")
+# Los videos NO se sirven con StaticFiles: la versión de Starlette que fija
+# fastapi==0.110 (0.36.x) no soporta "Range requests" en StaticFiles ni en
+# FileResponse, así que el navegador no podía buscar/saltar dentro del
+# <video> (el reproductor reportaba seekable=[0,0] sin importar qué tan
+# cargado estuviera el archivo) — ni con la barra nativa ni al retomar un
+# video justo donde se había dejado pausado. servir_video() de abajo sí
+# entiende el header "Range" y regresa 206 Partial Content cuando toca.
+TAMANO_CHUNK_VIDEO = 1024 * 1024  # 1 MB por pedazo, para no cargar el archivo completo a RAM
+
+
+@app.get("/videos/{nombre_archivo}")
+async def servir_video(nombre_archivo: str, request: Request):
+    # os.path.basename por la misma razón que en el resto del código: que no
+    # se pueda pedir un archivo fuera de videos/ con algo como "../../app.py".
+    ruta_archivo = os.path.join(RUTA_VIDEOS, os.path.basename(nombre_archivo))
+    if not os.path.isfile(ruta_archivo):
+        raise HTTPException(status_code=404, detail="Ese video no existe.")
+
+    tipo_contenido = mimetypes.guess_type(ruta_archivo)[0] or "application/octet-stream"
+    tamano_archivo = os.path.getsize(ruta_archivo)
+    rango = request.headers.get("range")
+
+    if rango is None:
+        # Sin Range: mandamos el archivo completo, pero avisando que SÍ
+        # soportamos Range, para que el navegador sepa que puede pedir
+        # pedazos sueltos en cuanto el alumno/profe intente buscar/saltar.
+        return FileResponse(
+            ruta_archivo,
+            media_type=tipo_contenido,
+            headers={"Accept-Ranges": "bytes"},
+        )
+
+    # Formato esperado: "bytes=INICIO-FIN" (FIN es opcional, ver RFC 7233).
+    try:
+        inicio_str, fin_str = rango.removeprefix("bytes=").split("-")
+        inicio = int(inicio_str) if inicio_str else 0
+        fin = int(fin_str) if fin_str else tamano_archivo - 1
+    except ValueError:
+        raise HTTPException(status_code=416, detail="Encabezado Range inválido.")
+
+    fin = min(fin, tamano_archivo - 1)
+    largo = fin - inicio + 1
+
+    def leer_pedazo():
+        with open(ruta_archivo, "rb") as archivo:
+            archivo.seek(inicio)
+            restante = largo
+            while restante > 0:
+                pedazo = archivo.read(min(TAMANO_CHUNK_VIDEO, restante))
+                if not pedazo:
+                    break
+                restante -= len(pedazo)
+                yield pedazo
+
+    return StreamingResponse(
+        leer_pedazo(),
+        status_code=206,
+        media_type=tipo_contenido,
+        headers={
+            "Content-Range": f"bytes {inicio}-{fin}/{tamano_archivo}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(largo),
+        },
+    )
 
 # Modelos de face-api.js servidos localmente (pesan menos de 1 MB en total),
 # así la demo no depende del internet del salón/oficina el día de la presentación.
