@@ -156,6 +156,10 @@ app.mount("/models", StaticFiles(directory=RUTA_MODELOS), name="models")
 # sacados de un video generado con Google Flow), servidos como estáticos.
 app.mount("/avatar", StaticFiles(directory=os.path.join(RUTA_FRONTEND, "avatar")), name="avatar")
 
+# Imágenes sueltas de la interfaz (ej. el header con el logo de la SEG),
+# que no encajan en /avatar ni en /models.
+app.mount("/imagenes", StaticFiles(directory=os.path.join(RUTA_FRONTEND, "imagenes")), name="imagenes")
+
 
 # --- Conexión a la base de datos ---------------------------------------------
 # Abre una conexión nueva de SQLite cada vez que se llama (SQLite no soporta

@@ -30,25 +30,16 @@
         }
 
         header {
-            background: linear-gradient(135deg, var(--azul-oscuro), var(--azul-medio));
-            color: white;
-            padding: 8px 24px;
+            background: white;
+            padding: 0;
             display: flex;
             align-items: center;
-            gap: 12px;
             box-shadow: 0 2px 8px rgba(11, 60, 107, 0.25);
         }
-        header h1 { font-size: 21px; margin: 0; font-weight: 700; letter-spacing: 0.2px; line-height: 1.1; }
-        header .subtitulo {
-            display: inline-block;
-            margin-top: 3px;
-            padding: 2px 10px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.14);
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            font-size: 11.5px;
-            font-weight: 500;
-            line-height: 1.3;
+        header .header-img {
+            display: block;
+            width: 100%;
+            height: auto;
         }
 
         main {
@@ -87,6 +78,9 @@
                height: calc(...), pero esta columna nunca tenía por qué). */
             align-self: stretch;
             position: relative;
+            /* Para que se asome un poquito del fondo azul (::before de abajo)
+               alrededor de las tarjetas, no solo entre ellas. */
+            padding: 10px;
         }
         /* Fondo decorativo detrás de las tarjetas de la columna (solo se ve
            en el gap entre ellas y en el sobrante de abajo, porque las
@@ -116,8 +110,12 @@
                (con su propio tope) y el historial del chat (que ya hace
                scroll interno), pero el cuadro para escribirle a MarIA
                nunca se sale de la vista. El valor exacto se ajusta abajo
-               una vez medido el alto real del header + padding de main. */
-            height: calc(100vh - 79px);
+               una vez medido el alto real del header + padding de main.
+               El header ahora es una imagen (imagenes/header-seg.png) en vez
+               de texto; a 1280px de ancho mide ~64.5px, así que el offset
+               subió de 79px a 81px (64.5px de header + 8px+8px de padding
+               vertical de main, redondeado hacia arriba para no desbordar). */
+            height: calc(100vh - 81px);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -468,6 +466,31 @@
             border-radius: 20px;
             box-shadow: 0 2px 10px rgba(10, 41, 96, 0.10);
         }
+        /* Título "Selecciona una lección", ahora flotando en la esquina
+           superior izquierda del recuadro del avatar (mismo tratamiento de
+           pastilla que avatar-mensaje) en vez de en una fila aparte encima
+           del reproductor: esa fila externa (.fila-titulo-video) solo se
+           muestra cuando sí hay un video reproduciéndose (ver
+           mostrarAvatar/ocultarAvatar), así ese espacio libre se lo queda
+           el chat de abajo. Posición absoluta (no ocupa espacio en el flex
+           de avatar-placeholder) para que el avatar aproveche todo el alto
+           disponible; avatar-placeholder ya es position:absolute, así que
+           sirve de referencia para este top/left. */
+        .avatar-titulo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2;
+            color: var(--azul-oscuro);
+            font-weight: 700;
+            font-size: 17px;
+            text-align: center;
+            padding: 7px 14px;
+            margin: 0;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(10, 41, 96, 0.10);
+        }
 
         .camara-container {
             position: relative; width: 100%; aspect-ratio: 4/3;
@@ -488,8 +511,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: none;
-            border: none;
+            background: var(--gris-fondo);
+            border: 1px solid #E3EAF2;
             padding: 10px 12px;
             border-radius: 8px;
             font: inherit;
@@ -521,14 +544,14 @@
         .fila-encabezado-panel .btn-desplegable { width: auto; flex: 1; min-width: 0; }
         .btn-circular-agregar {
             flex-shrink: 0;
-            width: 32px;
-            height: 32px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             background: white;
-            border: 1.5px solid var(--azul-oscuro);
+            border: 1.3px solid var(--azul-oscuro);
             color: var(--azul-oscuro);
             font-size: 16px;
             font-weight: 700;
@@ -538,6 +561,30 @@
             transition: background 0.15s, color 0.15s;
         }
         .btn-circular-agregar:hover { background: var(--azul-medio); color: white; border-color: var(--azul-medio); }
+        /* Solo el "+" (agregar video / nuevo chat), no la lupa de búsqueda,
+           en el naranja GTO en vez del azul default. */
+        .btn-circular-agregar:not(.btn-buscar-lista) {
+            border-color: var(--naranja-gto);
+            color: var(--naranja-gto);
+        }
+        .btn-circular-agregar:not(.btn-buscar-lista):hover {
+            background: var(--naranja-gto);
+            border-color: var(--naranja-gto);
+            color: white;
+        }
+        /* Input de búsqueda que aparece al hacer click en la lupa (ver
+           btn-buscar-lista), arriba de la lista de Biblioteca/Historial. */
+        .input-buscador-lista {
+            display: block;
+            width: 100%;
+            padding: 7px 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #C9DFF6;
+            font-size: 13.5px;
+            font-family: inherit;
+        }
+        .input-buscador-lista:focus { outline: none; border-color: var(--azul-medio); }
         .control-grupo input {
             width: 60px; padding: 6px; margin-left: 10px;
             border-radius: 6px; border: 1px solid #B7CDE5;
@@ -788,10 +835,7 @@
 <body>
 
     <header>
-        <div>
-            <h1>MarIA</h1>
-            <span class="subtitulo">Secretaría de Educación de Guanajuato · Prototipo de demostración</span>
-        </div>
+        <img src="imagenes/header-seg.png" alt="MarIA Asistente virtual · Secretaría de Educación de Guanajuato" class="header-img">
     </header>
 
     <main>
@@ -826,9 +870,11 @@
                         <span>📚 Biblioteca</span>
                         <span class="flecha-desplegable">▾</span>
                     </button>
-                    <a href="/agregar" class="btn-circular-agregar" title="Agregar video">➕</a>
+                    <button type="button" class="btn-circular-agregar btn-buscar-lista" data-target="contenido-biblioteca" data-buscador="buscador-biblioteca" title="Buscar video">🔍</button>
+                    <a href="/agregar" class="btn-circular-agregar" title="Agregar video">+</a>
                 </div>
                 <div id="contenido-biblioteca" class="contenido-desplegable" style="display:none;">
+                    <input type="text" id="buscador-biblioteca" class="input-buscador-lista" placeholder="Buscar video..." style="display:none;">
                     <div id="contenedor-lista">Cargando videos...</div>
                 </div>
             </div>
@@ -839,22 +885,25 @@
                         <span>🗨️ Historial de chats</span>
                         <span class="flecha-desplegable">▾</span>
                     </button>
-                    <button type="button" id="btn-nuevo-chat" class="btn-circular-agregar" title="Nuevo chat">➕</button>
+                    <button type="button" class="btn-circular-agregar btn-buscar-lista" data-target="contenido-historial-chats" data-buscador="buscador-historial" title="Buscar chat">🔍</button>
+                    <button type="button" id="btn-nuevo-chat" class="btn-circular-agregar" title="Nuevo chat">+</button>
                 </div>
                 <div id="contenido-historial-chats" class="contenido-desplegable" style="display:none;">
+                    <input type="text" id="buscador-historial" class="input-buscador-lista" placeholder="Buscar chat..." style="display:none;">
                     <div id="contenedor-historial-chats"></div>
                 </div>
             </div>
         </div>
 
         <div class="panel reproductor">
-            <div class="fila-titulo-video">
+            <div class="fila-titulo-video" style="display:none;">
                 <h2 id="titulo-video">Selecciona una lección</h2>
                 <button type="button" id="btn-cerrar-video" class="btn-cerrar-video" title="Cerrar video y volver a MarIA" style="display:none;">✕</button>
             </div>
             <div class="contenedor-video modo-avatar">
                 <div id="alerta-atencion">⚠️ Atención baja</div>
                 <div id="avatar-placeholder" class="avatar-placeholder">
+                    <p class="avatar-titulo">Selecciona una lección</p>
                     <div class="avatar-imagen-wrap">
                         <img src="/avatar/avatar-base.png" class="avatar-img" alt="Avatar de la Teacher MarIA">
                         <!-- Overlays con la boca en otra forma, generados aparte con el
@@ -870,7 +919,7 @@
                         <img class="avatar-ojos-overlay capa-ojos-medio" src="/avatar/avatar-ojos-medio.png" alt="">
                         <img class="avatar-ojos-overlay capa-ojos-cerrados" src="/avatar/avatar-ojos-cerrados.png" alt="">
                     </div>
-                    <p class="avatar-mensaje">¡Hola! Elige una lección o pregúntame algo 🙋</p>
+                    <p class="avatar-mensaje">¡Hola! Escríbeme o usa el micrófono para empezar 🎤</p>
                 </div>
                 <video id="video-player" class="video-leccion" controls style="display:none;">Tu navegador no soporta el video.</video>
                 <!-- Miniatura de MarIA en la esquina mientras se reproduce un video:
@@ -898,7 +947,7 @@
                     <input type="text" id="input-texto-asistente" class="input-texto-asistente" placeholder="Escribe tu pregunta aquí...">
                     <button type="submit" id="btn-enviar-texto" class="btn-enviar-texto" title="Enviar">➤</button>
                 </form>
-                <span id="estado-asistente" class="estado-asistente">Presiona el micrófono o escribe tu consulta arriba</span>
+                <span id="estado-asistente" class="estado-asistente" style="display:none;"></span>
                 <button type="button" id="btn-cancelar-pregunta" class="btn-cancelar-pregunta" style="display:none;">✕ Cancelar</button>
             </div>
         </div>
@@ -954,6 +1003,7 @@
         const contenedorSugeridos = document.getElementById('contenedor-sugeridos');
         const videoPlayer = document.getElementById('video-player');
         const tituloVideo = document.getElementById('titulo-video');
+        const filaTituloVideo = document.querySelector('.fila-titulo-video');
         const avatarPlaceholder = document.getElementById('avatar-placeholder');
         const avatarMini = document.getElementById('avatar-mini');
         const contenedorVideo = document.querySelector('.contenedor-video');
@@ -972,7 +1022,7 @@
             avatarMini.style.display = 'none';
             contenedorVideo.classList.add('modo-avatar');
             videoPlayer.pause();
-            tituloVideo.innerText = "Selecciona una lección";
+            filaTituloVideo.style.display = 'none';
             btnCerrarVideo.style.display = 'none';
             limpiarAvisoBajaAtencion();
         }
@@ -981,6 +1031,7 @@
             videoPlayer.style.display = 'block';
             avatarMini.style.display = 'block';
             contenedorVideo.classList.remove('modo-avatar');
+            filaTituloVideo.style.display = 'flex';
             btnCerrarVideo.style.display = 'flex';
         }
 
@@ -1232,6 +1283,39 @@
             });
         });
 
+        // Filtra las tarjetas .item-lista de un panel (Biblioteca/Historial)
+        // según lo escrito en su input de búsqueda, comparando contra todo
+        // el texto visible de la tarjeta (nombre de video, materia, etc.).
+        function filtrarItemsLista(inputBuscador, contenido) {
+            const texto = inputBuscador.value.trim().toLowerCase();
+            contenido.querySelectorAll('.item-lista').forEach((item) => {
+                item.style.display = item.textContent.toLowerCase().includes(texto) ? '' : 'none';
+            });
+        }
+
+        // Lupa junto al botón desplegable (ver btn-buscar-lista en Biblioteca
+        // e Historial de chats): al hacer click, despliega el panel si
+        // estaba cerrado y muestra/oculta su input de búsqueda. Al
+        // esconderlo, limpia el filtro para que la lista vuelva a verse
+        // completa.
+        document.querySelectorAll('.btn-buscar-lista').forEach((boton) => {
+            const contenido = document.getElementById(boton.dataset.target);
+            const botonDesplegable = document.querySelector(`.btn-desplegable[data-target="${boton.dataset.target}"]`);
+            const buscador = document.getElementById(boton.dataset.buscador);
+            buscador.addEventListener('input', () => filtrarItemsLista(buscador, contenido));
+            boton.addEventListener('click', () => {
+                if (contenido.style.display === 'none') {
+                    contenido.style.display = 'block';
+                    botonDesplegable.setAttribute('aria-expanded', 'true');
+                }
+                const mostrandoBuscador = buscador.style.display !== 'none';
+                buscador.style.display = mostrandoBuscador ? 'none' : 'block';
+                buscador.value = '';
+                filtrarItemsLista(buscador, contenido);
+                if (!mostrandoBuscador) buscador.focus();
+            });
+        });
+
         // ==================================================================
         // --- ASISTENTE DE VOZ (MarIA) ------------------------------------
         // ==================================================================
@@ -1254,17 +1338,15 @@
         });
         const estadoAsistente = document.getElementById('estado-asistente');
         const tituloAsistente = document.querySelector('.asistente h3');
-        const MENSAJE_ESTADO_IDLE = "Presiona el micrófono o escribe tu consulta arriba";
+        const MENSAJE_ESTADO_IDLE = "";
 
-        // El mensaje idle por defecto ya no aporta nada una vez que arrancó
-        // la conversación (el placeholder del input ya invita a escribir) y
-        // solo le quita espacio al chat/video. Lo escondemos en ese caso;
-        // cualquier otro mensaje (pensando, escuchando, error...) sí se
-        // muestra siempre, aunque la conversación ya haya arrancado.
+        // El mensaje idle ya no se muestra: repetía lo mismo que el mensaje
+        // de bienvenida de MarIA (ver avatar-mensaje) y solo le quitaba
+        // espacio al chat/video. Cualquier otro mensaje (pensando,
+        // escuchando, error...) sí se sigue mostrando siempre.
         function actualizarEstadoAsistente(texto) {
             estadoAsistente.innerText = texto;
-            const conversacionEmpezada = tituloAsistente.style.display === 'none';
-            estadoAsistente.style.display = (texto === MENSAJE_ESTADO_IDLE && conversacionEmpezada) ? 'none' : 'block';
+            estadoAsistente.style.display = (texto === MENSAJE_ESTADO_IDLE) ? 'none' : 'block';
         }
 
         // Un id de sesión por pestaña/salón. Mientras no recargues la página,
