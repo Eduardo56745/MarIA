@@ -7,20 +7,23 @@
 
     <style>
         :root {
-            --azul-oscuro: #0B3C6B;
-            --azul-medio: #1565C0;
-            --azul-claro: #E8F1FB;
-            --azul-acento: #2E8BE6;
+            /* Paleta oficial SEG Guanajuato */
+            --azul-oscuro: #0A2960;   /* Real */
+            --azul-medio: #1065C6;    /* Básico */
+            --azul-claro: #D8E3F4;    /* Gris */
+            --azul-celeste: #BEDEFF; /* Celeste */
             --gris-fondo: #F4F7FA;
             --texto-suave: #5A6B7B;
             --verde-ok: #2E9E5B;
+            --verde-gto: #95B625;     /* Verde GTO */
+            --naranja-gto: #DF9401;   /* Naranja GTO */
             --rojo-alerta: #D64545;
         }
 
         * { box-sizing: border-box; }
 
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             margin: 0;
             background-color: var(--gris-fondo);
             color: #1F2A37;
@@ -59,7 +62,7 @@
             background: white;
             padding: 14px 16px;
             border-radius: 10px;
-            box-shadow: 0 1px 2px rgba(11, 60, 107, 0.05);
+            box-shadow: 0 1px 2px rgba(10, 41, 96, 0.05);
             border: 1px solid #E3EAF2;
         }
         .panel h2, .panel h3 {
@@ -97,14 +100,6 @@
             z-index: 0;
             border-radius: 14px;
             background-color: var(--azul-claro);
-            /* Las dos tarjetas (Ajustes, Biblioteca) ocupan el primer ~50%
-               de la columna, así que las manchas van centradas en la mitad
-               de abajo (el tramo que de verdad queda vacío). */
-            background-image:
-                radial-gradient(circle at 30% 68%, rgba(46, 139, 230, 0.30), transparent 40%),
-                radial-gradient(circle at 82% 92%, rgba(11, 60, 107, 0.22), transparent 42%),
-                radial-gradient(rgba(11, 60, 107, 0.09) 1.5px, transparent 1.5px);
-            background-size: auto, auto, 16px 16px;
         }
         .columna-izq > .panel { position: relative; z-index: 1; }
         .reproductor {
@@ -113,7 +108,7 @@
             padding: 8px 18px;
             border-radius: 14px;
             border-color: #D7E4F2;
-            box-shadow: 0 10px 28px rgba(11, 60, 107, 0.14), 0 2px 8px rgba(11, 60, 107, 0.08);
+            box-shadow: 0 10px 28px rgba(10, 41, 96, 0.14), 0 2px 8px rgba(10, 41, 96, 0.08);
             /* Alto atado a la ventana (header + paddings de main), no al
                contenido. Así, sin importar qué tan grande hagamos al avatar
                de MarIA, el panel nunca crece más allá de lo que cabe en
@@ -151,7 +146,7 @@
             justify-content: center;
             padding: 0;
         }
-        .btn-cerrar-video:hover { background: #06263F; }
+        .btn-cerrar-video:hover { background: #08214D; }
         .vision {
             flex: 1; max-width: 310px; text-align: center;
             /* Mismo tratamiento que .columna-izq: estirar al alto completo
@@ -166,13 +161,8 @@
             position: absolute;
             inset: 0;
             z-index: 0;
-            /* El título + cámara + métricas ocupan ~65% del panel; las
-               manchas van en el tercio de abajo, que es lo que sobra. */
-            background-image:
-                radial-gradient(circle at 25% 80%, rgba(46, 139, 230, 0.24), transparent 42%),
-                radial-gradient(circle at 82% 95%, rgba(11, 60, 107, 0.18), transparent 40%),
-                radial-gradient(rgba(11, 60, 107, 0.08) 1.5px, transparent 1.5px);
-            background-size: auto, auto, 16px 16px;
+            border-radius: 14px;
+            background-color: var(--azul-claro);
         }
         .vision > * { position: relative; z-index: 1; }
 
@@ -192,7 +182,7 @@
             justify-content: space-between;
             gap: 8px;
         }
-        .item-lista:hover { background: #DCEAFC; transform: translateX(2px); }
+        .item-lista:hover { background: #C7D6EC; transform: translateX(2px); }
         .item-lista strong { color: var(--azul-oscuro); }
         .item-lista small { color: var(--texto-suave); }
         .btn-eliminar-item {
@@ -215,6 +205,16 @@
         /* Tope de 2 tarjetas visibles (cada una mide ~68px con su margen):
            en vez de desplegar la lista completa y empujar el resto del
            panel, esto la dejar en un scroll propio. */
+        /* Biblioteca en naranja, Historial de chats en verde (colores GTO):
+           mismo componente .item-lista, solo cambia el color lateral según
+           en qué panel vive (ver #contenedor-lista / #contenedor-historial-chats). */
+        #contenedor-lista .item-lista {
+            border-left-color: var(--naranja-gto);
+        }
+        #contenedor-historial-chats .item-lista {
+            border-left-color: var(--verde-gto);
+        }
+
         #contenedor-lista, #contenedor-historial-chats {
             max-height: 144px;
             overflow-y: auto;
@@ -290,7 +290,7 @@
             font-weight: 600; font-size: 14px; cursor: pointer;
         }
         #modal-btn-cancelar { background: var(--azul-claro); color: var(--azul-oscuro); }
-        #modal-btn-cancelar:hover { background: #DCEAFC; }
+        #modal-btn-cancelar:hover { background: #C7D6EC; }
         #modal-btn-confirmar { background: var(--rojo-alerta); color: white; }
         #modal-btn-confirmar:hover { background: #B93838; }
 
@@ -466,7 +466,7 @@
                (pared, pizarrón). Así siempre tiene contraste garantizado. */
             background: rgba(255, 255, 255, 0.85);
             border-radius: 20px;
-            box-shadow: 0 2px 10px rgba(11, 60, 107, 0.10);
+            box-shadow: 0 2px 10px rgba(10, 41, 96, 0.10);
         }
 
         .camara-container {
@@ -478,7 +478,6 @@
         .camara-input { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         .camara-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
 
-        .control-grupo { background: var(--azul-claro); border: 1px solid #C9DFF6; }
         .control-grupo label { color: var(--azul-oscuro); font-weight: 600; font-size: 14px; }
 
         /* Botón que hace las veces de encabezado desplegable de un panel
@@ -489,8 +488,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(11, 60, 107, 0.06);
-            border: 1px solid transparent;
+            background: none;
+            border: none;
             padding: 10px 12px;
             border-radius: 8px;
             font: inherit;
@@ -501,7 +500,7 @@
             text-align: left;
             transition: background 0.15s;
         }
-        .btn-desplegable:hover { background: rgba(11, 60, 107, 0.11); }
+        .btn-desplegable:hover { background: rgba(10, 41, 96, 0.11); }
         .flecha-desplegable {
             font-size: 12px;
             color: var(--texto-suave);
@@ -554,7 +553,7 @@
 
         #pantalla-carga {
             position: absolute; z-index: 10; color: white; font-weight: 600;
-            background: rgba(11, 60, 107, 0.85); padding: 10px 14px; border-radius: 8px;
+            background: rgba(10, 41, 96, 0.85); padding: 10px 14px; border-radius: 8px;
             font-size: 13.5px;
         }
 
@@ -2337,7 +2336,7 @@
                     if (detecciones.length > maxRostrosDetectados) maxRostrosDetectados = detecciones.length;
                     spanRostros.innerText = detecciones.length;
                     spanPorcentaje.innerText = "Calibrando...";
-                    spanPorcentaje.style.color = "#1565C0";
+                    spanPorcentaje.style.color = "#1065C6";
                 } else {
                     // Si "Actualizar total automáticamente" está marcado, el total
                     // se ajusta solo con las caras que la cámara ve — pero con
