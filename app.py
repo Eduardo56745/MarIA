@@ -457,6 +457,33 @@ async def listar_videos():
     return JSONResponse(content=[dict(fila) for fila in filas])
 
 
+# Borra un video del catálogo: su fila en la base de datos y, si sigue ahí,
+# su archivo físico en videos/. Lo llama el botón 🗑 de la Biblioteca en el
+# frontend, después de que el profe confirma en el modal.
+@app.delete("/api/videos/{id_video}")
+async def eliminar_video(id_video: int):
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT ruta_archivo FROM videos WHERE id_video = ?", (id_video,))
+    fila = cursor.fetchone()
+
+    if fila is None:
+        conexion.close()
+        raise HTTPException(status_code=404, detail="Ese video no existe.")
+
+    cursor.execute("DELETE FROM videos WHERE id_video = ?", (id_video,))
+    conexion.commit()
+    conexion.close()
+
+    # El nombre en la DB ya viene "seguro" (ver nombre_archivo_seguro), pero
+    # igual usamos basename para no arriesgarnos a borrar fuera de videos/.
+    ruta_archivo = os.path.join(RUTA_VIDEOS, os.path.basename(fila["ruta_archivo"]))
+    if os.path.exists(ruta_archivo):
+        os.remove(ruta_archivo)
+
+    return JSONResponse(content={"mensaje": "Video eliminado correctamente."})
+
+
 # ==============================================================================
 # --- AGREGAR VIDEOS DESDE LA PÁGINA WEB ---------------------------------------
 # ==============================================================================

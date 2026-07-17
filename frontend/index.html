@@ -76,7 +76,37 @@
             font-size: 15px;
         }
 
-        .columna-izq { flex: 1; max-width: 260px; display: flex; flex-direction: column; gap: 14px; }
+        .columna-izq {
+            flex: 1; max-width: 260px; display: flex; flex-direction: column; gap: 14px;
+            /* Sin esto, la columna solo mide lo que ocupan sus dos tarjetas
+               y deja al descubierto el gris plano de body hasta el fondo de
+               la pantalla (el reproductor sí llena todo el alto vía su
+               height: calc(...), pero esta columna nunca tenía por qué). */
+            align-self: stretch;
+            position: relative;
+        }
+        /* Fondo decorativo detrás de las tarjetas de la columna (solo se ve
+           en el gap entre ellas y en el sobrante de abajo, porque las
+           tarjetas en sí son opacas y quedan encima). Manchas suaves +
+           puntitos en los mismos azules de la marca, para que ese espacio
+           deje de sentirse vacío sin competir con las tarjetas blancas. */
+        .columna-izq::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            border-radius: 14px;
+            background-color: var(--azul-claro);
+            /* Las dos tarjetas (Ajustes, Biblioteca) ocupan el primer ~50%
+               de la columna, así que las manchas van centradas en la mitad
+               de abajo (el tramo que de verdad queda vacío). */
+            background-image:
+                radial-gradient(circle at 30% 68%, rgba(46, 139, 230, 0.30), transparent 40%),
+                radial-gradient(circle at 82% 92%, rgba(11, 60, 107, 0.22), transparent 42%),
+                radial-gradient(rgba(11, 60, 107, 0.09) 1.5px, transparent 1.5px);
+            background-size: auto, auto, 16px 16px;
+        }
+        .columna-izq > .panel { position: relative; z-index: 1; }
         .reproductor {
             flex: 2;
             position: relative;
@@ -122,9 +152,34 @@
             padding: 0;
         }
         .btn-cerrar-video:hover { background: #06263F; }
-        .vision { flex: 1; max-width: 310px; text-align: center; }
+        .vision {
+            flex: 1; max-width: 310px; text-align: center;
+            /* Mismo tratamiento que .columna-izq: estirar al alto completo
+               y decorar el sobrante debajo de las métricas con manchas
+               suaves en vez de dejar el blanco liso del panel. */
+            align-self: stretch;
+            position: relative;
+            overflow: hidden;
+        }
+        .vision::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            /* El título + cámara + métricas ocupan ~65% del panel; las
+               manchas van en el tercio de abajo, que es lo que sobra. */
+            background-image:
+                radial-gradient(circle at 25% 80%, rgba(46, 139, 230, 0.24), transparent 42%),
+                radial-gradient(circle at 82% 95%, rgba(11, 60, 107, 0.18), transparent 40%),
+                radial-gradient(rgba(11, 60, 107, 0.08) 1.5px, transparent 1.5px);
+            background-size: auto, auto, 16px 16px;
+        }
+        .vision > * { position: relative; z-index: 1; }
 
-        .video-item {
+        /* Tarjeta genérica de lista: la usan tanto la Biblioteca (videos)
+           como el Historial de chats, para que se vean igual (ver
+           renderHistorialChats / cargarVideos). */
+        .item-lista {
             padding: 12px 14px;
             margin-bottom: 10px;
             background: var(--azul-claro);
@@ -132,12 +187,79 @@
             border-radius: 8px;
             border-left: 4px solid var(--azul-medio);
             transition: background 0.15s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
         }
-        .video-item:hover { background: #DCEAFC; transform: translateX(2px); }
-        .video-item strong { color: var(--azul-oscuro); }
-        .video-item small { color: var(--texto-suave); }
+        .item-lista:hover { background: #DCEAFC; transform: translateX(2px); }
+        .item-lista strong { color: var(--azul-oscuro); }
+        .item-lista small { color: var(--texto-suave); }
+        .btn-eliminar-item {
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--rojo-alerta);
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .btn-eliminar-item:hover { background: rgba(214, 69, 69, 0.15); }
+
+        /* Tope de ~3 tarjetas visibles (cada una mide ~68px con su margen):
+           en vez de desplegar la lista completa y empujar el resto del
+           panel, esto la dejar en un scroll propio. */
+        #contenedor-lista, #contenedor-historial-chats {
+            max-height: 210px;
+            overflow-y: auto;
+            /* Sin esto, el navegador convierte overflow-x (que se queda en
+               "visible") también en "auto" en cuanto overflow-y no es
+               "visible", y aparece una barra horizontal de sobra. */
+            overflow-x: hidden;
+        }
+        .mensaje-lista-vacia { color: var(--texto-suave); font-size: 13.5px; text-align: center; padding: 8px 0; }
 
         .video-leccion { width: 100%; height: 100%; border-radius: 10px; background: #000; }
+
+        /* Modal genérico de confirmación (lo usan "eliminar video" y
+           "eliminar chat", ver btn-eliminar-item / mostrarConfirmacion). */
+        #modal-confirmacion-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(11, 30, 50, 0.55);
+            align-items: center; justify-content: center;
+        }
+        #modal-confirmacion {
+            background: white;
+            border-radius: 14px;
+            padding: 22px 24px;
+            max-width: 340px;
+            width: 90%;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+        }
+        #modal-confirmacion h4 {
+            margin: 0 0 8px; color: var(--azul-oscuro); font-size: 17px;
+        }
+        #modal-confirmacion p {
+            margin: 0 0 20px; color: var(--texto-suave); font-size: 14.5px; line-height: 1.4;
+        }
+        .modal-confirmacion-botones {
+            display: flex; justify-content: flex-end; gap: 10px;
+        }
+        .modal-confirmacion-botones button {
+            border: none; border-radius: 8px; padding: 9px 16px;
+            font-weight: 600; font-size: 14px; cursor: pointer;
+        }
+        #modal-btn-cancelar { background: var(--azul-claro); color: var(--azul-oscuro); }
+        #modal-btn-cancelar:hover { background: #DCEAFC; }
+        #modal-btn-confirmar { background: var(--rojo-alerta); color: white; }
+        #modal-btn-confirmar:hover { background: #B93838; }
 
         .contenedor-video {
             position: relative;
@@ -168,8 +290,37 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 0;
             background: white;
+            overflow: hidden;
+        }
+        /* Fondo de salón detrás de María (avatar-base.png ya no trae fondo
+           blanco propio, es un recorte con transparencia — ver
+           quitar_fondo.py). Va en un ::before aparte (no directo en
+           avatar-placeholder) para poder desenfocarlo con filter:blur sin
+           afectar la nitidez de María ni del texto, que quedan encima por
+           z-index. "inset: -6%" + scale implícito del blur evita que se
+           note el borde nítido del desenfoque en las orillas del panel
+           (que ya recorta con overflow:hidden + el border-radius del
+           contenedor). center 25% para que se vea más pizarrón/pared y
+           menos bancas vacías, que es lo que queda detrás de sus hombros. */
+        .avatar-placeholder::before {
+            content: '';
+            position: absolute;
+            inset: -6%;
+            background: url('/avatar/avatar-fondo-aula.jpeg') center 25% / cover no-repeat;
+            filter: blur(3px) saturate(0.9) brightness(1.05);
+            z-index: 0;
+        }
+        /* Velo claro encima del fondo: sin esto, con tantos colores (sillas,
+           pizarrón, banderas) el mensaje de abajo y hasta María pierden
+           contraste. Más opaco hacia abajo, que es donde vive el texto. */
+        .avatar-placeholder::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.48) 55%, rgba(255, 255, 255, 0.72) 100%);
+            z-index: 0;
         }
         /* El "wrap" escala con el contenedor igual que antes hacía el SVG:
            llena el alto disponible del avatar-placeholder y mantiene su
@@ -178,6 +329,7 @@
            este wrap, así quedan alineados sin importar el tamaño final. */
         .avatar-imagen-wrap {
             position: relative;
+            z-index: 1;
             flex: 1 1 auto;
             min-height: 0;
             width: auto;
@@ -267,13 +419,21 @@
             opacity: 1;
         }
         .avatar-mensaje {
+            position: relative;
+            z-index: 1;
             flex-shrink: 0;
             color: var(--azul-oscuro);
             font-weight: 600;
             font-size: 15px;
             text-align: center;
-            padding: 0 24px;
+            padding: 8px 20px;
             margin: 0;
+            /* Pastilla semi-opaca: con el fondo del salón detrás, el texto
+               suelto se leía mal en cuanto había algo claro justo detrás
+               (pared, pizarrón). Así siempre tiene contraste garantizado. */
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(11, 60, 107, 0.10);
         }
 
         .camara-container {
@@ -335,19 +495,25 @@
             font-size: 13.5px;
         }
 
+        /* Aviso de "atención baja": ya NO pausa el video, es de pura
+           referencia visual para el profe (ver activarAvisoBajaAtencion /
+           desactivarAvisoBajaAtencion). El badge flota en la esquina del
+           video; el contorno rojo lo pone .contenedor-video.atencion-baja. */
         #alerta-atencion {
             display: none;
-            position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+            position: absolute; top: 10px; right: 10px; z-index: 20;
             background: var(--rojo-alerta); color: white;
-            padding: 14px 16px; border-radius: 12px 12px 0 0;
-            align-items: center; justify-content: space-between; gap: 12px;
-            font-weight: 600; font-size: 14.5px;
+            padding: 7px 12px; border-radius: 20px;
+            align-items: center; gap: 6px;
+            font-weight: 600; font-size: 13px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         }
-        #alerta-atencion button {
-            background: white; color: var(--rojo-alerta); border: none;
-            padding: 8px 14px; border-radius: 6px; font-weight: 700; cursor: pointer;
+        .contenedor-video.atencion-baja {
+            /* Sombra HACIA AFUERA (no inset): el <video> llena el 100% del
+               contenedor y taparía un contorno inset por completo. */
+            box-shadow: 0 0 0 4px var(--rojo-alerta);
+            transition: box-shadow 0.2s;
         }
-        #alerta-atencion button:hover { background: #f1f1f1; }
 
         .metricas p { margin: 6px 0; font-size: 15px; }
         .metricas strong { color: var(--azul-oscuro); }
@@ -588,19 +754,25 @@
                     <div id="contenedor-lista">Cargando videos...</div>
                 </div>
             </div>
+
+            <div class="panel">
+                <button type="button" class="btn-desplegable" data-target="contenido-historial-chats" aria-expanded="false">
+                    <span>🗨️ Historial de chats</span>
+                    <span class="flecha-desplegable">▾</span>
+                </button>
+                <div id="contenido-historial-chats" class="contenido-desplegable" style="display:none;">
+                    <div id="contenedor-historial-chats"></div>
+                </div>
+            </div>
         </div>
 
         <div class="panel reproductor">
-            <div id="alerta-atencion">
-                <span>⚠️ Video pausado: el grupo perdió atención</span>
-                <button id="btn-reanudar">Reanudar ahora</button>
-            </div>
-
             <div class="fila-titulo-video">
                 <h2 id="titulo-video">Selecciona una lección</h2>
                 <button type="button" id="btn-cerrar-video" class="btn-cerrar-video" title="Cerrar video y volver a MarIA" style="display:none;">✕</button>
             </div>
             <div class="contenedor-video modo-avatar">
+                <div id="alerta-atencion">⚠️ Atención baja</div>
                 <div id="avatar-placeholder" class="avatar-placeholder">
                     <div class="avatar-imagen-wrap">
                         <img src="/avatar/avatar-base.png" class="avatar-img" alt="Avatar de la Teacher MarIA">
@@ -673,8 +845,21 @@
         </div>
     </main>
 
+    <!-- Modal genérico de confirmación (por ahora solo "eliminar video"). -->
+    <div id="modal-confirmacion-overlay">
+        <div id="modal-confirmacion">
+            <h4 id="modal-confirmacion-titulo">Confirmar</h4>
+            <p id="modal-confirmacion-texto">¿Seguro que quieres continuar?</p>
+            <div class="modal-confirmacion-botones">
+                <button type="button" id="modal-btn-cancelar">Cancelar</button>
+                <button type="button" id="modal-btn-confirmar">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const contenedorLista = document.getElementById('contenedor-lista');
+        const contenedorHistorialChats = document.getElementById('contenedor-historial-chats');
         const videoPlayer = document.getElementById('video-player');
         const tituloVideo = document.getElementById('titulo-video');
         const avatarPlaceholder = document.getElementById('avatar-placeholder');
@@ -697,6 +882,7 @@
             videoPlayer.pause();
             tituloVideo.innerText = "Selecciona una lección";
             btnCerrarVideo.style.display = 'none';
+            limpiarAvisoBajaAtencion();
         }
         function ocultarAvatar() {
             avatarPlaceholder.style.display = 'none';
@@ -705,12 +891,95 @@
             contenedorVideo.classList.remove('modo-avatar');
             btnCerrarVideo.style.display = 'flex';
         }
+
+        // Arranca el video de una lección "de golpe": cambia a modo video,
+        // resetea el aviso de atención baja y reproduce desde el inicio. Se
+        // usa cuando el video llega justo después de que MarIA termina de
+        // hablar (ver hablarTexto/audio.onended).
+        function reproducirVideoLeccion(nombreArchivo) {
+            tituloVideo.innerText = "MarIA está explicando...";
+            ocultarAvatar();
+            videoPlayer.src = `/videos/${nombreArchivo}`;
+            videoPlayer.muted = false;
+            videoPlayer.currentTime = 0;
+            limpiarAvisoBajaAtencion();
+            videoPlayer.play();
+        }
+
         // La "✕" solo corta el video y regresa al avatar de MarIA; la
         // conversación del chat se queda intacta (no toca listaConversacion).
         const btnCerrarVideo = document.getElementById('btn-cerrar-video');
         btnCerrarVideo.onclick = mostrarAvatar;
-        // En cuanto un video llega al final, regresamos al avatar solo.
-        videoPlayer.addEventListener('ended', mostrarAvatar);
+
+        // Narra un texto en voz alta (con lip-sync) SIN agregarlo como
+        // burbuja al chat. hablarTexto necesita un objeto
+        // { btnDetener, btnRepetir } para prender/apagar sus estados; como
+        // aquí no hay burbuja dueña, se le pasan botones "sueltos" que nunca
+        // se agregan al DOM (no se ven, pero hablarTexto funciona igual).
+        function narrarSinChat(texto) {
+            const botonesNarracion = { btnDetener: document.createElement('button'), btnRepetir: document.createElement('button') };
+            hablarTexto(texto, botonesNarracion);
+        }
+
+        // Frases que MarIA puede decir en cuanto un video termina, para
+        // cerrar el tema con el grupo. Se elige una al azar cada vez (nunca
+        // siempre la misma) pero solo UNA por video.
+        const FRASES_FIN_VIDEO = [
+            "¿Qué les pareció el video?",
+            "¿Entendieron el tema del video?",
+            "¿Les quedó claro lo que acabamos de ver?",
+            "¿Tienen alguna duda sobre el video?",
+            "¿Qué aprendieron con este video?",
+        ];
+
+        // Frases que MarIA puede decir cuando el sistema detecta atención
+        // baja durante un video (ver activarAvisoBajaAtencion más abajo).
+        // Igual que FRASES_FIN_VIDEO: al azar, y ninguna se muestra en el chat.
+        const FRASES_ATENCION_BAJA = [
+            "Chicos, pongan atención al video, por favor.",
+            "Recuerden concentrarse en el video, por favor.",
+            "Un poco más de atención al video, por favor.",
+            "¿Seguimos aquí? Vamos a poner atención al video.",
+            "No se distraigan, sigamos con atención el video.",
+        ];
+
+        // En cuanto un video llega al final, regresamos al avatar y MarIA
+        // comenta el video con una frase al azar (ver FRASES_FIN_VIDEO).
+        function alTerminarVideo() {
+            mostrarAvatar();
+            const frase = FRASES_FIN_VIDEO[Math.floor(Math.random() * FRASES_FIN_VIDEO.length)];
+            narrarSinChat(frase);
+        }
+        videoPlayer.addEventListener('ended', alTerminarVideo);
+
+        // --- Modal genérico de confirmación -----------------------------------
+        // Lo usan tanto "eliminar video" (ver btn-eliminar-item en cargarVideos)
+        // como "eliminar chat" (ver renderHistorialChats más abajo).
+        const overlayConfirmacion = document.getElementById('modal-confirmacion-overlay');
+        const tituloConfirmacion = document.getElementById('modal-confirmacion-titulo');
+        const textoConfirmacion = document.getElementById('modal-confirmacion-texto');
+        const btnConfirmacionCancelar = document.getElementById('modal-btn-cancelar');
+        const btnConfirmacionConfirmar = document.getElementById('modal-btn-confirmar');
+
+        function ocultarConfirmacion() {
+            overlayConfirmacion.style.display = 'none';
+            btnConfirmacionConfirmar.onclick = null;
+        }
+        function mostrarConfirmacion(titulo, texto, alConfirmar) {
+            tituloConfirmacion.innerText = titulo;
+            textoConfirmacion.innerText = texto;
+            overlayConfirmacion.style.display = 'flex';
+            btnConfirmacionConfirmar.onclick = () => {
+                ocultarConfirmacion();
+                alConfirmar();
+            };
+        }
+        btnConfirmacionCancelar.onclick = ocultarConfirmacion;
+        // Cerrar el modal si se hace clic fuera de la tarjeta (en el fondo oscuro).
+        overlayConfirmacion.onclick = (evento) => {
+            if (evento.target === overlayConfirmacion) ocultarConfirmacion();
+        };
+        // -------------------------------------------------------------------------
 
         async function cargarVideos() {
             try {
@@ -720,8 +989,11 @@
 
                 videos.forEach(video => {
                     const div = document.createElement('div');
-                    div.className = 'video-item';
-                    div.innerHTML = `<strong>${video.subtema}</strong><br><small>${video.materia}</small>`;
+                    div.className = 'item-lista';
+
+                    const info = document.createElement('div');
+                    info.innerHTML = `<strong>${video.subtema}</strong><br><small>${video.materia}</small>`;
+                    div.appendChild(info);
 
                     div.onclick = () => {
                         tituloVideo.innerText = `${video.materia}: ${video.subtema}`;
@@ -729,12 +1001,27 @@
                         ocultarAvatar();
                         videoPlayer.src = `/videos/${nombreArchivo}`;
                         videoPlayer.play();
-                        // Nuevo video: reseteamos cualquier estado de pausa por atención.
-                        pausadoPorSistema = false;
-                        contadorBajaAtencion = 0;
-                        contadorBuenaAtencion = 0;
-                        ocultarAlertaAtencion();
+                        // Nuevo video: reseteamos cualquier aviso de atención baja.
+                        limpiarAvisoBajaAtencion();
                     };
+
+                    const btnEliminar = document.createElement('button');
+                    btnEliminar.type = 'button';
+                    btnEliminar.className = 'btn-eliminar-item';
+                    btnEliminar.title = 'Eliminar este tema';
+                    btnEliminar.innerText = '🗑';
+                    btnEliminar.onclick = (evento) => {
+                        // Sin esto, el clic también dispararía div.onclick y
+                        // se pondría a reproducir el video que vamos a borrar.
+                        evento.stopPropagation();
+                        mostrarConfirmacion(
+                            'Eliminar video',
+                            `¿Seguro que quieres eliminar "${video.subtema}"? Esta acción no se puede deshacer.`,
+                            () => eliminarVideo(video.id_video)
+                        );
+                    };
+                    div.appendChild(btnEliminar);
+
                     contenedorLista.appendChild(div);
                 });
             } catch (error) {
@@ -742,6 +1029,16 @@
             }
         }
         cargarVideos();
+
+        async function eliminarVideo(idVideo) {
+            try {
+                const respuesta = await fetch(`/api/videos/${idVideo}`, { method: 'DELETE' });
+                if (!respuesta.ok) throw new Error('No se pudo eliminar el video.');
+                cargarVideos();
+            } catch (error) {
+                console.error("Error eliminando video:", error);
+            }
+        }
 
         // Paneles desplegables (Ajustes del Aula / Biblioteca): el botón de
         // encabezado muestra/oculta su contenido y gira la flechita. Genérico
@@ -794,6 +1091,136 @@
         // MarIA recuerda todo lo que se ha platicado en ESTA sesión (el backend
         // guarda la memoria real; aquí solo guardamos el id para mandarlo).
         let sesionId = null;
+
+        // --- Historial de chats -------------------------------------------------
+        // Cada conversación (un sesionId) se guarda aquí, en localStorage
+        // (esto SÍ sobrevive a recargar la página, a diferencia de la
+        // memoria del backend que se pierde si el servidor se reinicia).
+        // Nombre corto = la primera pregunta de esa conversación, recortada.
+        // Tope de MAX_CHATS_HISTORIAL: al guardar uno nuevo que se pase del
+        // límite, se borra el más antiguo.
+        const MAX_CHATS_HISTORIAL = 10;
+        const CLAVE_HISTORIAL_CHATS = 'mariaHistorialChats';
+        let historialChats = [];
+        try {
+            historialChats = JSON.parse(localStorage.getItem(CLAVE_HISTORIAL_CHATS)) || [];
+        } catch (error) {
+            historialChats = [];
+        }
+
+        function acortarTituloChat(texto) {
+            const limpio = texto.trim().replace(/\s+/g, ' ');
+            return limpio.length > 34 ? limpio.slice(0, 34).trim() + '…' : limpio;
+        }
+
+        function guardarHistorialChats() {
+            localStorage.setItem(CLAVE_HISTORIAL_CHATS, JSON.stringify(historialChats));
+        }
+
+        // Deja la conversación activa en blanco (mismo estado que al cargar
+        // la página): se usa al borrar el chat que está abierto ahorita y al
+        // abrir uno del historial (antes de pintar sus mensajes viejos).
+        function reiniciarConversacionActiva() {
+            detenerNarracionActual();
+            finalizarNarracion();
+            sesionId = null;
+            listaConversacion.innerHTML = '<p class="mensaje-vacio">Presiona el micrófono o escribe tu consulta para hacerle una pregunta a MarIA.</p>';
+            tituloAsistente.style.display = '';
+            actualizarEstadoAsistente(MENSAJE_ESTADO_IDLE);
+        }
+
+        // Se llama justo después de cada respuesta exitosa de MarIA (ver
+        // preguntarAMarIA). Si sesionId ya tenía chat guardado, le agrega el
+        // intercambio nuevo y lo sube al frente (más reciente primero); si
+        // es la primera pregunta de esa sesión, crea la entrada.
+        function registrarIntercambioEnHistorial(pregunta, respuesta, nombreVideo) {
+            let entrada = historialChats.find((chat) => chat.id === sesionId);
+            const esChatNuevo = !entrada;
+            if (esChatNuevo) {
+                entrada = { id: sesionId, titulo: acortarTituloChat(pregunta), mensajes: [] };
+            }
+            historialChats = historialChats.filter((chat) => chat.id !== sesionId);
+            historialChats.unshift(entrada);
+            if (esChatNuevo) {
+                while (historialChats.length > MAX_CHATS_HISTORIAL) historialChats.pop();
+            }
+
+            entrada.mensajes.push({ quien: 'alumno', texto: pregunta });
+            entrada.mensajes.push({ quien: 'maria', texto: respuesta, nombreVideo: nombreVideo || null });
+            entrada.fecha = Date.now();
+
+            guardarHistorialChats();
+            renderHistorialChats();
+        }
+
+        // Carga un chat guardado como la conversación activa: reproduce sus
+        // burbujas (con controles de narración, para poder repetir
+        // respuestas viejas) y retoma su sesionId, así que si el servidor no
+        // se ha reiniciado, MarIA sigue teniendo memoria real de ese chat.
+        function cargarChatDesdeHistorial(idChat) {
+            const entrada = historialChats.find((chat) => chat.id === idChat);
+            if (!entrada) return;
+
+            reiniciarConversacionActiva();
+            sesionId = entrada.id;
+            mostrarAvatar();
+            entrada.mensajes.forEach((mensaje) => {
+                if (mensaje.quien === 'maria') {
+                    const botones = agregarBurbuja(mensaje.texto, 'maria', mensaje.nombreVideo, false, true);
+                    botones.btnRepetir.style.display = 'flex';
+                } else {
+                    agregarBurbuja(mensaje.texto, 'alumno');
+                }
+            });
+        }
+
+        function eliminarChatDelHistorial(idChat) {
+            const eraElChatActivo = idChat === sesionId;
+            historialChats = historialChats.filter((chat) => chat.id !== idChat);
+            guardarHistorialChats();
+            renderHistorialChats();
+            if (eraElChatActivo) reiniciarConversacionActiva();
+        }
+
+        function renderHistorialChats() {
+            contenedorHistorialChats.innerHTML = '';
+
+            if (historialChats.length === 0) {
+                contenedorHistorialChats.innerHTML = '<p class="mensaje-lista-vacia">Todavía no hay chats guardados.</p>';
+                return;
+            }
+
+            historialChats.forEach((chat) => {
+                const div = document.createElement('div');
+                div.className = 'item-lista';
+
+                const cantidadPreguntas = chat.mensajes.filter((mensaje) => mensaje.quien === 'alumno').length;
+                const info = document.createElement('div');
+                info.innerHTML = `<strong>${chat.titulo}</strong><br><small>${cantidadPreguntas} pregunta${cantidadPreguntas === 1 ? '' : 's'}</small>`;
+                div.appendChild(info);
+
+                div.onclick = () => cargarChatDesdeHistorial(chat.id);
+
+                const btnEliminar = document.createElement('button');
+                btnEliminar.type = 'button';
+                btnEliminar.className = 'btn-eliminar-item';
+                btnEliminar.title = 'Eliminar este chat';
+                btnEliminar.innerText = '🗑';
+                btnEliminar.onclick = (evento) => {
+                    evento.stopPropagation();
+                    mostrarConfirmacion(
+                        'Eliminar chat',
+                        `¿Seguro que quieres eliminar el chat "${chat.titulo}"? Esta acción no se puede deshacer.`,
+                        () => eliminarChatDelHistorial(chat.id)
+                    );
+                };
+                div.appendChild(btnEliminar);
+
+                contenedorHistorialChats.appendChild(div);
+            });
+        }
+        renderHistorialChats();
+        // -------------------------------------------------------------------------
 
         // conControlesNarracion: true cuando esta burbuja de MarIA se va a
         // narrar en voz alta. En ese caso se le agregan, flotando en su
@@ -855,6 +1282,7 @@
 
                 btnDetener.onclick = () => {
                     detenerNarracionActual();
+                    videoPendienteTrasNarracion = null;
                     finalizarNarracion();
                 };
                 btnRepetir.onclick = () => hablarTexto(texto, botonesNarracion);
@@ -874,6 +1302,12 @@
         // Así, al terminar de hablar, solo desmuteamos el video si el silencio
         // lo puso la narración (y no, por ejemplo, un mute manual del profe).
         let videoSilenciadoPorNarracion = false;
+
+        // Nombre de archivo del video que debe arrancar en cuanto termine la
+        // narración en curso (si esta respuesta trae uno). Se guarda aparte
+        // de videoSilenciadoPorNarracion porque ese es para un video que YA
+        // está sonando; este es para uno que todavía ni empieza.
+        let videoPendienteTrasNarracion = null;
 
         // --- Animación de boca del avatar mientras habla ---------------------
         // /api/tts-viseme manda, junto con el audio, la lista real de eventos
@@ -1017,18 +1451,22 @@
         // texto (ver agregarBurbuja). Cada burbuja de MarIA trae los suyos,
         // así que cualquier respuesta anterior se puede volver a escuchar de
         // forma independiente, sin importar cuál fue la última.
-        function hablarTexto(texto, botones) {
+        // videoDespues (opcional): nombre de archivo de un video que debe
+        // arrancar justo cuando esta narración termine de forma natural (ver
+        // audio.onended). Solo lo manda preguntarAMarIA cuando la respuesta
+        // incluye un video; al repetir una burbuja (↻) no se vuelve a pasar,
+        // así que repetir texto viejo nunca relanza un video.
+        function hablarTexto(texto, botones, videoDespues) {
             detenerNarracionActual(); // corta cualquier narración anterior
             detenerEstadoVisualNarracion(); // deja a la burbuja anterior en estado "no está hablando"
             botonesNarracionActiva = botones;
             botones.btnRepetir.style.display = 'none';
+            videoPendienteTrasNarracion = videoDespues || null;
 
             // Si hay un video reproduciéndose ahorita (así haya arrancado
-            // desde la Biblioteca, no como parte de esta pregunta), lo
-            // muteamos mientras MarIA habla para que no se empalmen las dos
-            // voces. Antes esto solo pasaba cuando la respuesta traía un
-            // video nuevo (datos.video en preguntarAMarIA); un video que ya
-            // estaba sonando de antes se quedaba sin mutear.
+            // desde la Biblioteca, o sea el que sigue de una respuesta
+            // anterior) lo muteamos mientras MarIA habla para que no se
+            // empalmen las dos voces.
             if (!videoPlayer.paused) {
                 videoPlayer.muted = true;
                 videoSilenciadoPorNarracion = true;
@@ -1053,17 +1491,29 @@
                         botones.btnDetener.style.display = 'flex';
                         iniciarLipSyncPorViseme(audio, datos.visemes);
                     };
+                    // Al terminar de hablar de verdad (no cortada a mano),
+                    // arrancamos el video pendiente de esta respuesta, si trae uno.
+                    audio.onended = () => {
+                        finalizarNarracion();
+                        const video = videoPendienteTrasNarracion;
+                        videoPendienteTrasNarracion = null;
+                        if (video) reproducirVideoLeccion(video);
+                    };
                     // onerror también cubre el caso de que pause() interrumpa la narración.
-                    audio.onended = finalizarNarracion;
                     audio.onerror = () => {
                         console.error('No se pudo generar/reproducir la voz de MarIA.');
+                        videoPendienteTrasNarracion = null;
                         finalizarNarracion();
                     };
 
-                    audio.play().catch(finalizarNarracion);
+                    audio.play().catch(() => {
+                        videoPendienteTrasNarracion = null;
+                        finalizarNarracion();
+                    });
                 })
                 .catch(err => {
                     console.error('No se pudo generar la voz de MarIA.', err);
+                    videoPendienteTrasNarracion = null;
                     finalizarNarracion();
                 });
         }
@@ -1112,29 +1562,23 @@
 
                 sesionId = datos.sesion_id; // guardamos/actualizamos la sesión
 
+                // Si sí hubo respuesta real (no el mensaje de "no pude
+                // responder"), la guardamos en el historial de chats.
+                if (!datos.error) {
+                    registrarIntercambioEnHistorial(textoAlumno, datos.respuesta, datos.video);
+                }
+
                 // Si el backend agotó sus reintentos y regresó el mensaje de
                 // "no pude responder", le agregamos la flechita de reintentar.
                 // conControlesNarracion=true: esta burbuja sí se va a narrar,
                 // así que trae sus propios botones ⏹/↻.
                 const botonesNarracion = agregarBurbuja(datos.respuesta, 'maria', datos.video, datos.error === true, true);
 
-                // Reproducción SINCRONIZADA: el video arranca al mismo tiempo
-                // que MarIA empieza a narrar la respuesta. Silenciamos el audio
-                // propio del video para que no se empalme con la narración.
-                if (datos.video) {
-                    tituloVideo.innerText = "MarIA está explicando...";
-                    ocultarAvatar();
-                    videoPlayer.src = `/videos/${datos.video}`;
-                    videoPlayer.muted = true;
-                    videoSilenciadoPorNarracion = true;
-                    videoPlayer.currentTime = 0;
-                    pausadoPorSistema = false;
-                    contadorBajaAtencion = 0;
-                    contadorBuenaAtencion = 0;
-                    ocultarAlertaAtencion();
-                    videoPlayer.play();
-                }
-                hablarTexto(datos.respuesta, botonesNarracion);
+                // El video (si esta respuesta trae uno) ya NO arranca junto
+                // con la narración: MarIA lo presenta hablando primero (con
+                // el avatar) y el video arranca solo hasta que termine de
+                // hablar (ver hablarTexto/audio.onended).
+                hablarTexto(datos.respuesta, botonesNarracion, datos.video);
                 actualizarEstadoAsistente(MENSAJE_ESTADO_IDLE);
             } catch (error) {
                 if (error.name === 'AbortError') {
@@ -1235,7 +1679,6 @@
         const btnCalibrar = document.getElementById('btn-calibrar');
         const mensajeCalibracion = document.getElementById('mensaje-calibracion');
         const alertaAtencion = document.getElementById('alerta-atencion');
-        const btnReanudar = document.getElementById('btn-reanudar');
 
         let enFaseDeCalibracion = false;
         let maxRostrosDetectados = 0;
@@ -1249,13 +1692,18 @@
         let sumaPitchCalibracion = 0;
         let muestrasPoseCalibracion = 0;
 
-        // --- Lógica de pausa/reanudación automática ---------------------------
+        // --- Lógica de aviso de atención baja -----------------------------
+        // Ya NO pausa el video (antes sí): es de pura referencia visual para
+        // el profe (contorno rojo + badge sobre el video, ver
+        // activarAvisoBajaAtencion) y MarIA suelta un comentario amable
+        // pidiendo atención (ver FRASES_ATENCION_BAJA), pero el video sigue
+        // sonando en todo momento.
         const UMBRAL_ATENCION = 0.6;          // 60% de atención mínima requerida
-        const CHECKS_PARA_PAUSAR = 2;          // 2 checks seguidos por debajo del umbral (~2s)
-        const CHECKS_PARA_REANUDAR = 2;        // 2 checks seguidos por ARRIBA del umbral para reanudar solo (~2s)
+        const CHECKS_PARA_PAUSAR = 2;          // 2 checks seguidos por debajo del umbral (~2s) para activar el aviso
+        const CHECKS_PARA_REANUDAR = 2;        // 2 checks seguidos por ARRIBA del umbral para quitar el aviso solo
         let contadorBajaAtencion = 0;
         let contadorBuenaAtencion = 0;
-        let pausadoPorSistema = false;         // distingue "lo pausó MarIA" de que el profe le dé pausa manual
+        let atencionBajaActiva = false;        // true mientras el aviso (contorno + badge) está prendido
 
         // --- Total automático con "memoria" (debounce) ------------------------
         // Antes el total se igualaba EN VIVO al número de caras detectadas ese
@@ -1275,22 +1723,36 @@
         function mostrarAlertaAtencion() { alertaAtencion.style.display = 'flex'; }
         function ocultarAlertaAtencion() { alertaAtencion.style.display = 'none'; }
 
-        function pausarPorBajaAtencion() {
-            if (videoPlayer.paused || !videoPlayer.src) return;
-            videoPlayer.pause();
-            pausadoPorSistema = true;
+        // Prende el aviso visual (contorno rojo + badge) y hace que MarIA
+        // suelte una frase amable pidiendo atención, en voz alta pero SIN
+        // agregarla al chat (ver narrarSinChat/FRASES_ATENCION_BAJA). El
+        // video sigue reproduciéndose normal, esto es solo referencia.
+        function activarAvisoBajaAtencion() {
+            if (atencionBajaActiva || !videoPlayer.src) return;
+            atencionBajaActiva = true;
             contadorBajaAtencion = 0;
             contadorBuenaAtencion = 0;
+            contenedorVideo.classList.add('atencion-baja');
             mostrarAlertaAtencion();
+            const frase = FRASES_ATENCION_BAJA[Math.floor(Math.random() * FRASES_ATENCION_BAJA.length)];
+            narrarSinChat(frase);
         }
-        function reanudarAutomatico() {
-            pausadoPorSistema = false;
+        // Quita el aviso visual cuando la atención se recupera sola.
+        function desactivarAvisoBajaAtencion() {
+            atencionBajaActiva = false;
             contadorBuenaAtencion = 0;
+            contenedorVideo.classList.remove('atencion-baja');
             ocultarAlertaAtencion();
-            videoPlayer.play();
         }
-        // Botón manual, por si en la demo se quiere forzar la reanudación antes de tiempo.
-        btnReanudar.onclick = reanudarAutomatico;
+        // Limpieza completa (contadores + aviso visual) al arrancar/cambiar
+        // de video o al volver al avatar, para no arrastrar estado viejo.
+        function limpiarAvisoBajaAtencion() {
+            atencionBajaActiva = false;
+            contadorBajaAtencion = 0;
+            contadorBuenaAtencion = 0;
+            contenedorVideo.classList.remove('atencion-baja');
+            ocultarAlertaAtencion();
+        }
         // -------------------------------------------------------------------------
 
         const traduccionEmociones = {
@@ -1653,29 +2115,29 @@
                     spanPorcentaje.innerText = Math.round(porcentajeReal * 100) + "%";
                     spanPorcentaje.style.color = porcentajeReal >= 0.60 ? "#2E9E5B" : "#D64545";
 
-                    // --- pausa / reanudación automática, con histéresis de 2 checks ---
-                    if (pausadoPorSistema) {
-                        // Para reanudar pedimos que la atención suba POR ENCIMA del umbral
-                        // (no solo igual), así el estado de pausa/reanudación no se pisa entre sí.
+                    // --- aviso de atención baja, con histéresis de 2 checks ---
+                    if (atencionBajaActiva) {
+                        // Para quitar el aviso pedimos que la atención suba POR ENCIMA del
+                        // umbral (no solo igual), así el estado no se pisa entre sí.
                         if (porcentajeReal > UMBRAL_ATENCION) {
                             contadorBuenaAtencion++;
                             if (contadorBuenaAtencion >= CHECKS_PARA_REANUDAR) {
-                                reanudarAutomatico();
+                                desactivarAvisoBajaAtencion();
                             }
                         } else {
                             contadorBuenaAtencion = 0;
                         }
-                    } else if (!videoPlayer.paused && videoPlayer.src) {
+                    } else if (videoPlayer.src && !videoPlayer.paused) {
                         // OJO: aquí usamos "<=" y no "<". Con grupos chicos (ej. 2 personas),
                         // el porcentaje puede caer EXACTO en 50% (1 de 2 atentos), y
                         // matemáticamente 50% no es "menor que" 50%, así que con "<" nunca
-                        // se disparaba la pausa en ese caso. Con "<=", 50% exacto sí cuenta
+                        // se disparaba el aviso en ese caso. Con "<=", 50% exacto sí cuenta
                         // como "atención insuficiente", que es lo que se pidió originalmente:
-                        // "si el 50% está distraído, se pausa".
+                        // "si el 50% está distraído, se avisa".
                         if (porcentajeReal <= UMBRAL_ATENCION) {
                             contadorBajaAtencion++;
                             if (contadorBajaAtencion >= CHECKS_PARA_PAUSAR) {
-                                pausarPorBajaAtencion();
+                                activarAvisoBajaAtencion();
                             }
                         } else {
                             contadorBajaAtencion = 0;
