@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>La Teacher MarIA</title>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+    <script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
 
     <style>
         :root {
@@ -111,11 +112,12 @@
                scroll interno), pero el cuadro para escribirle a MarIA
                nunca se sale de la vista. El valor exacto se ajusta abajo
                una vez medido el alto real del header + padding de main.
-               El header ahora es una imagen (imagenes/header-seg.png) en vez
-               de texto; a 1280px de ancho mide ~64.5px, así que el offset
-               subió de 79px a 81px (64.5px de header + 8px+8px de padding
-               vertical de main, redondeado hacia arriba para no desbordar). */
-            height: calc(100vh - 81px);
+               El header es una imagen (imagenes/header-seg.png); a 1280px
+               de ancho mide 52px con la versión actual del header, así que
+               el offset es 68px (52px de header + 8px+8px de padding
+               vertical de main). Si el header vuelve a cambiar de tamaño,
+               hay que remedir y actualizar este número otra vez. */
+            height: calc(100vh - 68px);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -213,7 +215,7 @@
             border-left-color: var(--verde-gto);
         }
 
-        #contenedor-lista, #contenedor-historial-chats {
+        #contenedor-lista, #contenedor-historial-chats, #contenedor-modelos-3d {
             max-height: 144px;
             overflow-y: auto;
             /* Sin esto, el navegador convierte overflow-x (que se queda en
@@ -291,6 +293,45 @@
         #modal-btn-cancelar:hover { background: #C7D6EC; }
         #modal-btn-confirmar { background: var(--rojo-alerta); color: white; }
         #modal-btn-confirmar:hover { background: #B93838; }
+
+        /* Modal del visor de modelos 3D: aparece agrandado (no pantalla
+           completa) en vez de tener que abrir a mano el fullscreen propio
+           del visor de Sketchfab - desde el chat, solo hasta que MarIA
+           termina de hablar (ver hablarTexto/audio.onended); desde el
+           panel "Modelos 3D", al hacer click en un resultado. Mismo patrón
+           que #modal-confirmacion, solo que más grande. */
+        #modal-modelo-3d-overlay {
+            display: none;
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(11, 30, 50, 0.55);
+            align-items: center; justify-content: center;
+        }
+        #modal-modelo-3d {
+            background: white;
+            border-radius: 14px;
+            padding: 18px 20px;
+            width: min(85vw, 900px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+        }
+        .modal-modelo-3d-header {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .modal-modelo-3d-header h4 { margin: 0; color: var(--azul-oscuro); font-size: 17px; }
+        #modal-modelo-3d-visor {
+            width: 100%;
+            height: min(65vh, 560px);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+        }
+        #modal-modelo-3d-visor iframe { width: 100%; height: 100%; border: none; }
+        #modal-modelo-3d-credito {
+            margin: 10px 0 0;
+            font-size: 12.5px;
+            color: var(--texto-suave);
+        }
 
         .contenedor-video {
             position: relative;
@@ -794,12 +835,13 @@
         }
         .controles-narracion-burbuja button:hover { background: var(--azul-medio); color: white; }
 
-        /* Botón de texto "▶ Reproducir video", junto al ⏹/↻: a diferencia de
-           esos (circulares, 26x26, escondidos por default y prendidos por
-           JS), este es un botón normal, siempre visible en cualquier burbuja
-           que traiga un video (ver agregarBurbuja). Mismo alto para que se
-           vea alineado con ellos en la fila. */
-        .controles-narracion-burbuja .btn-reproducir-video-burbuja {
+        /* Botón de texto tipo "▶ Reproducir video" / "🧬 Ver modelo 3D", junto
+           al ⏹/↻: a diferencia de esos (circulares, 26x26, escondidos por
+           default y prendidos por JS), este es un botón normal, siempre
+           visible en cualquier burbuja que traiga un video o modelo 3D (ver
+           agregarBurbuja). Mismo alto para que se vea alineado con ellos en
+           la fila. Clase compartida por los dos, mismo look para ambos. */
+        .controles-narracion-burbuja .btn-pill-burbuja {
             display: flex;
             width: auto;
             height: 26px;
@@ -861,6 +903,22 @@
                     <p id="mensaje-calibracion" style="color: var(--azul-medio); font-weight: 600; font-size: 0.9em; display: none; margin-top: 10px; text-align: center;">
                         ⏳ Calibrando (5s)... ¡Miren a la cámara!
                     </p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="fila-encabezado-panel">
+                    <button type="button" class="btn-desplegable" data-target="contenido-modelos-3d" aria-expanded="false">
+                        <span>🧬 Modelos 3D</span>
+                        <span class="flecha-desplegable">▾</span>
+                    </button>
+                    <button type="button" class="btn-circular-agregar btn-buscar-lista" data-target="contenido-modelos-3d" data-buscador="buscador-modelos-3d" title="Buscar modelo 3D">🔍</button>
+                </div>
+                <div id="contenido-modelos-3d" class="contenido-desplegable" style="display:none;">
+                    <input type="text" id="buscador-modelos-3d" class="input-buscador-lista" placeholder="Buscar modelo 3D... (Enter para buscar)" style="display:none;">
+                    <div id="contenedor-modelos-3d">
+                        <p class="mensaje-lista-vacia">Escribe un tema y presiona Enter para buscar.</p>
+                    </div>
                 </div>
             </div>
 
@@ -981,6 +1039,7 @@
                 <h3>🎯 Videos sugeridos</h3>
                 <div id="contenedor-sugeridos"></div>
             </div>
+
         </div>
     </main>
 
@@ -996,11 +1055,26 @@
         </div>
     </div>
 
+    <!-- Modal del visor de modelos 3D (ver mostrarModeloEnModal). -->
+    <div id="modal-modelo-3d-overlay">
+        <div id="modal-modelo-3d">
+            <div class="modal-modelo-3d-header">
+                <h4>🧬 Modelo 3D</h4>
+                <button type="button" id="modal-modelo-3d-cerrar" class="btn-cerrar-video" title="Cerrar">✕</button>
+            </div>
+            <div id="modal-modelo-3d-visor"></div>
+            <p id="modal-modelo-3d-credito"></p>
+        </div>
+    </div>
+
     <script>
         const contenedorLista = document.getElementById('contenedor-lista');
         const contenedorHistorialChats = document.getElementById('contenedor-historial-chats');
         const panelSugeridos = document.getElementById('panel-sugeridos');
         const contenedorSugeridos = document.getElementById('contenedor-sugeridos');
+        const overlayModelo3D = document.getElementById('modal-modelo-3d-overlay');
+        const visorModalModelo3D = document.getElementById('modal-modelo-3d-visor');
+        const creditoModalModelo3D = document.getElementById('modal-modelo-3d-credito');
         const videoPlayer = document.getElementById('video-player');
         const tituloVideo = document.getElementById('titulo-video');
         const filaTituloVideo = document.querySelector('.fila-titulo-video');
@@ -1043,7 +1117,7 @@
             tituloVideo.innerText = "MarIA está explicando...";
             ocultarAvatar();
             videoPlayer.src = `/videos/${nombreArchivo}`;
-            videoPlayer.muted = false;
+            videoPlayer.volume = 1;
             videoPlayer.currentTime = 0;
             limpiarAvisoBajaAtencion();
             videoPlayer.play();
@@ -1141,6 +1215,60 @@
                 div.onclick = () => reproducirVideoDesdeLista(video);
                 contenedorSugeridos.appendChild(div);
             });
+        }
+
+        // --- Modelo 3D -----------------------------------------------------------
+        // MarIA solo pide un modelo 3D cuando se lo piden de forma explícita (ver
+        // la sección "MODELOS 3D" de construir_instrucciones en app.py) y manda el
+        // término ya traducido al inglés, así que /api/chat ya resuelve el modelo
+        // (uid + crédito) y lo manda listo en datos.modelo_3d - ver preguntarAMarIA.
+        // Aparece en un modal agrandado (no pantalla completa) en vez de un panel
+        // fijo chico: desde el chat, hablarTexto lo abre hasta que MarIA termina
+        // de hablar de verdad (ver audio.onended); desde el panel "Modelos 3D"
+        // de la izquierda, se abre directo al hacer click en un resultado.
+        function mostrarModeloEnModal(modelo) {
+            // Se recrea el iframe desde cero en cada modelo nuevo: es más simple
+            // y confiable que reusar la misma instancia del Viewer API con otro uid.
+            visorModalModelo3D.innerHTML = '<iframe id="iframe-modelo-3d" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>';
+            const iframe = document.getElementById('iframe-modelo-3d');
+
+            const cliente = new Sketchfab(iframe);
+            cliente.init(modelo.uid, {
+                autostart: 1,
+                success: function (api) { api.start(); },
+                error: function () { console.error('El Viewer de Sketchfab no pudo cargar el modelo', modelo.uid); },
+            });
+
+            creditoModalModelo3D.textContent = `"${modelo.nombre}" por ${modelo.autor || 'autor desconocido'} en Sketchfab`;
+            overlayModelo3D.style.display = 'flex';
+        }
+
+        function cerrarModalModelo3D() {
+            overlayModelo3D.style.display = 'none';
+            visorModalModelo3D.innerHTML = ''; // corta el modelo de verdad, no solo lo esconde
+        }
+
+        document.getElementById('modal-modelo-3d-cerrar').onclick = cerrarModalModelo3D;
+        // Cerrar el modal si se hace clic fuera de la tarjeta (en el fondo oscuro),
+        // igual que el modal de confirmación.
+        overlayModelo3D.onclick = (evento) => {
+            if (evento.target === overlayModelo3D) cerrarModalModelo3D();
+        };
+
+        // Utilidad suelta para probar a mano desde la consola (busca por tema en
+        // vez de recibir el modelo ya resuelto). El flujo real del chat no la usa.
+        async function mostrarModelo3D(tema) {
+            let datos;
+            try {
+                const resp = await fetch(`/api/modelo-3d?tema=${encodeURIComponent(tema)}`);
+                datos = await resp.json();
+            } catch (error) {
+                console.error('No se pudo consultar /api/modelo-3d:', error);
+                return;
+            }
+
+            if (!datos.encontrado) return;
+            mostrarModeloEnModal(datos.modelo);
         }
 
         // La "✕" solo corta el video y regresa al avatar de MarIA; la
@@ -1316,6 +1444,51 @@
             });
         });
 
+        // --- Modelos 3D (panel de búsqueda) ---------------------------------
+        // A diferencia de Biblioteca/Historial (la lupa de arriba solo filtra
+        // una lista que ya estaba cargada), aquí no hay catálogo previo: la
+        // lupa revela el input igual que las otras (ver forEach de arriba),
+        // pero buscar de verdad requiere Enter - dispara /api/modelos-3d
+        // contra Sketchfab, no tiene sentido pedirlo en cada tecla.
+        const contenedorModelos3D = document.getElementById('contenedor-modelos-3d');
+        const buscadorModelos3D = document.getElementById('buscador-modelos-3d');
+
+        async function buscarModelos3DPanel() {
+            const tema = buscadorModelos3D.value.trim();
+            if (!tema) return;
+
+            contenedorModelos3D.innerHTML = '<p class="mensaje-lista-vacia">Buscando...</p>';
+
+            let datos;
+            try {
+                const resp = await fetch(`/api/modelos-3d?tema=${encodeURIComponent(tema)}`);
+                datos = await resp.json();
+            } catch (error) {
+                console.error('No se pudo consultar /api/modelos-3d:', error);
+                contenedorModelos3D.innerHTML = '<p class="mensaje-lista-vacia">No se pudo buscar. Intenta de nuevo.</p>';
+                return;
+            }
+
+            const resultados = datos.resultados || [];
+            if (resultados.length === 0) {
+                contenedorModelos3D.innerHTML = '<p class="mensaje-lista-vacia">No se encontraron modelos para ese tema.</p>';
+                return;
+            }
+
+            contenedorModelos3D.innerHTML = '';
+            resultados.forEach((modelo) => {
+                const div = document.createElement('div');
+                div.className = 'item-lista';
+                div.innerHTML = `<div><strong>${modelo.nombre}</strong><br><small>${modelo.autor || 'Autor desconocido'}</small></div>`;
+                div.onclick = () => mostrarModeloEnModal(modelo);
+                contenedorModelos3D.appendChild(div);
+            });
+        }
+
+        buscadorModelos3D.addEventListener('keydown', (evento) => {
+            if (evento.key === 'Enter') buscarModelos3DPanel();
+        });
+
         // ==================================================================
         // --- ASISTENTE DE VOZ (MarIA) ------------------------------------
         // ==================================================================
@@ -1396,7 +1569,7 @@
         // preguntarAMarIA). Si sesionId ya tenía chat guardado, le agrega el
         // intercambio nuevo y lo sube al frente (más reciente primero); si
         // es la primera pregunta de esa sesión, crea la entrada.
-        function registrarIntercambioEnHistorial(pregunta, respuesta, nombreVideo) {
+        function registrarIntercambioEnHistorial(pregunta, respuesta, nombreVideo, modelo3D) {
             let entrada = historialChats.find((chat) => chat.id === sesionId);
             const esChatNuevo = !entrada;
             if (esChatNuevo) {
@@ -1409,7 +1582,7 @@
             }
 
             entrada.mensajes.push({ quien: 'alumno', texto: pregunta });
-            entrada.mensajes.push({ quien: 'maria', texto: respuesta, nombreVideo: nombreVideo || null });
+            entrada.mensajes.push({ quien: 'maria', texto: respuesta, nombreVideo: nombreVideo || null, modelo3D: modelo3D || null });
             entrada.fecha = Date.now();
 
             guardarHistorialChats();
@@ -1475,7 +1648,7 @@
             sesionId = entrada.id;
             entrada.mensajes.forEach((mensaje) => {
                 if (mensaje.quien === 'maria') {
-                    const botones = agregarBurbuja(mensaje.texto, 'maria', mensaje.nombreVideo, false, true);
+                    const botones = agregarBurbuja(mensaje.texto, 'maria', mensaje.nombreVideo, false, true, mensaje.modelo3D);
                     botones.btnRepetir.style.display = 'flex';
                     // Reconstruye "Videos sugeridos" con lo que ya se mostró
                     // en este chat guardado (el último video fija la materia).
@@ -1553,7 +1726,7 @@
         // esquina inferior derecha, los botones ⏹ (detener) y ↻ (repetir esta
         // respuesta puntual). Regresa esos botones para que preguntarAMarIA
         // se los pase a hablarTexto().
-        function agregarBurbuja(texto, quien, nombreVideo, mostrarReintentar, conControlesNarracion) {
+        function agregarBurbuja(texto, quien, nombreVideo, mostrarReintentar, conControlesNarracion, modelo3D) {
             const vacio = listaConversacion.querySelector('.mensaje-vacio');
             if (vacio) {
                 vacio.remove();
@@ -1609,6 +1782,7 @@
                 btnDetener.onclick = () => {
                     detenerNarracionActual();
                     videoPendienteTrasNarracion = null;
+                    modelo3DPendienteTrasNarracion = null;
                     finalizarNarracion();
                 };
                 btnRepetir.onclick = () => hablarTexto(texto, botonesNarracion);
@@ -1622,11 +1796,26 @@
                 if (nombreVideo) {
                     const btnReproducirVideo = document.createElement('button');
                     btnReproducirVideo.type = 'button';
-                    btnReproducirVideo.className = 'btn-reproducir-video-burbuja';
+                    btnReproducirVideo.className = 'btn-pill-burbuja';
                     btnReproducirVideo.title = 'Reproducir este video';
                     btnReproducirVideo.innerText = '▶ Reproducir video';
                     btnReproducirVideo.onclick = () => reproducirVideoPorNombre(nombreVideo);
                     contenedorControles.appendChild(btnReproducirVideo);
+                }
+
+                // Igual que el de video: si esta burbuja trae un modelo 3D, se
+                // puede reabrir el modal desde aquí en cualquier momento. Sin
+                // este botón, cerrar el modal (✕) dejaba sin forma de volver
+                // a verlo salvo pidiéndoselo otra vez a MarIA o rebuscándolo
+                // a mano en el panel "Modelos 3D".
+                if (modelo3D) {
+                    const btnVerModelo3D = document.createElement('button');
+                    btnVerModelo3D.type = 'button';
+                    btnVerModelo3D.className = 'btn-pill-burbuja';
+                    btnVerModelo3D.title = 'Ver este modelo 3D';
+                    btnVerModelo3D.innerText = '🧬 Ver modelo 3D';
+                    btnVerModelo3D.onclick = () => mostrarModeloEnModal(modelo3D);
+                    contenedorControles.appendChild(btnVerModelo3D);
                 }
 
                 burbuja.appendChild(contenedorControles);
@@ -1637,17 +1826,29 @@
             return botonesNarracion;
         }
 
-        // Se activa junto con videoPlayer.muted = true cuando silenciamos el
-        // video para que no se empalme con la narración (ver preguntarAMarIA).
-        // Así, al terminar de hablar, solo desmuteamos el video si el silencio
-        // lo puso la narración (y no, por ejemplo, un mute manual del profe).
-        let videoSilenciadoPorNarracion = false;
+        // Qué tan abajo baja el volumen del video mientras MarIA habla, en vez
+        // de mutearlo del todo (así el profe sigue oyendo de fondo que el
+        // video sigue ahí sonando).
+        const VOLUMEN_VIDEO_DURANTE_NARRACION = 0.5;
+
+        // Se activa junto con videoPlayer.volume = VOLUMEN_VIDEO_DURANTE_NARRACION
+        // cuando le bajamos el volumen al video para que no se empalme con la
+        // narración (ver hablarTexto). Así, al terminar de hablar, solo lo
+        // regresamos a volumen normal si fue la narración la que lo bajó (y
+        // no, por ejemplo, un ajuste manual de volumen del profe).
+        let volumenBajadoPorNarracion = false;
 
         // Nombre de archivo del video que debe arrancar en cuanto termine la
         // narración en curso (si esta respuesta trae uno). Se guarda aparte
-        // de videoSilenciadoPorNarracion porque ese es para un video que YA
+        // de volumenBajadoPorNarracion porque ese es para un video que YA
         // está sonando; este es para uno que todavía ni empieza.
         let videoPendienteTrasNarracion = null;
+
+        // Igual que videoPendienteTrasNarracion, pero para el modal de
+        // modelos 3D (ver mostrarModeloEnModal): el objeto modelo completo
+        // (no un nombre de archivo) que debe mostrarse en cuanto la
+        // narración en curso termine de verdad.
+        let modelo3DPendienteTrasNarracion = null;
 
         // --- Animación de boca del avatar mientras habla ---------------------
         // /api/tts-viseme manda, junto con el audio, la lista real de eventos
@@ -1770,9 +1971,9 @@
 
         function finalizarNarracion() {
             detenerEstadoVisualNarracion();
-            if (videoSilenciadoPorNarracion) {
-                videoPlayer.muted = false;
-                videoSilenciadoPorNarracion = false;
+            if (volumenBajadoPorNarracion) {
+                videoPlayer.volume = 1;
+                volumenBajadoPorNarracion = false;
             }
         }
 
@@ -1793,23 +1994,26 @@
         // forma independiente, sin importar cuál fue la última.
         // videoDespues (opcional): nombre de archivo de un video que debe
         // arrancar justo cuando esta narración termine de forma natural (ver
-        // audio.onended). Solo lo manda preguntarAMarIA cuando la respuesta
-        // incluye un video; al repetir una burbuja (↻) no se vuelve a pasar,
-        // así que repetir texto viejo nunca relanza un video.
-        function hablarTexto(texto, botones, videoDespues) {
+        // audio.onended). modelo3DDespues (opcional): el modelo 3D que debe
+        // abrirse en el modal en ese mismo momento. Solo los manda
+        // preguntarAMarIA cuando la respuesta incluye uno; al repetir una
+        // burbuja (↻) no se vuelven a pasar, así que repetir texto viejo
+        // nunca relanza un video ni reabre el modal.
+        function hablarTexto(texto, botones, videoDespues, modelo3DDespues) {
             detenerNarracionActual(); // corta cualquier narración anterior
             detenerEstadoVisualNarracion(); // deja a la burbuja anterior en estado "no está hablando"
             botonesNarracionActiva = botones;
             botones.btnRepetir.style.display = 'none';
             videoPendienteTrasNarracion = videoDespues || null;
+            modelo3DPendienteTrasNarracion = modelo3DDespues || null;
 
             // Si hay un video reproduciéndose ahorita (así haya arrancado
             // desde la Biblioteca, o sea el que sigue de una respuesta
-            // anterior) lo muteamos mientras MarIA habla para que no se
-            // empalmen las dos voces.
+            // anterior) le bajamos el volumen mientras MarIA habla para que
+            // no se empalmen las dos voces, sin dejarlo en silencio total.
             if (!videoPlayer.paused) {
-                videoPlayer.muted = true;
-                videoSilenciadoPorNarracion = true;
+                videoPlayer.volume = VOLUMEN_VIDEO_DURANTE_NARRACION;
+                volumenBajadoPorNarracion = true;
             }
 
             // Prototipo: /api/tts-viseme regresa JSON (audio en base64 + lista
@@ -1832,28 +2036,36 @@
                         iniciarLipSyncPorViseme(audio, datos.visemes);
                     };
                     // Al terminar de hablar de verdad (no cortada a mano),
-                    // arrancamos el video pendiente de esta respuesta, si trae uno.
+                    // arrancamos el video/modelo 3D pendiente de esta
+                    // respuesta, si trae alguno.
                     audio.onended = () => {
                         finalizarNarracion();
                         const video = videoPendienteTrasNarracion;
                         videoPendienteTrasNarracion = null;
                         if (video) reproducirVideoLeccion(video);
+
+                        const modelo3D = modelo3DPendienteTrasNarracion;
+                        modelo3DPendienteTrasNarracion = null;
+                        if (modelo3D) mostrarModeloEnModal(modelo3D);
                     };
                     // onerror también cubre el caso de que pause() interrumpa la narración.
                     audio.onerror = () => {
                         console.error('No se pudo generar/reproducir la voz de MarIA.');
                         videoPendienteTrasNarracion = null;
+                        modelo3DPendienteTrasNarracion = null;
                         finalizarNarracion();
                     };
 
                     audio.play().catch(() => {
                         videoPendienteTrasNarracion = null;
+                        modelo3DPendienteTrasNarracion = null;
                         finalizarNarracion();
                     });
                 })
                 .catch(err => {
                     console.error('No se pudo generar la voz de MarIA.', err);
                     videoPendienteTrasNarracion = null;
+                    modelo3DPendienteTrasNarracion = null;
                     finalizarNarracion();
                 });
         }
@@ -1905,7 +2117,7 @@
                 // Si sí hubo respuesta real (no el mensaje de "no pude
                 // responder"), la guardamos en el historial de chats.
                 if (!datos.error) {
-                    registrarIntercambioEnHistorial(textoAlumno, datos.respuesta, datos.video);
+                    registrarIntercambioEnHistorial(textoAlumno, datos.respuesta, datos.video, datos.modelo_3d);
                 }
 
                 // Video nuevo en esta respuesta: actualiza "Videos sugeridos"
@@ -1920,13 +2132,13 @@
                 // "no pude responder", le agregamos la flechita de reintentar.
                 // conControlesNarracion=true: esta burbuja sí se va a narrar,
                 // así que trae sus propios botones ⏹/↻.
-                const botonesNarracion = agregarBurbuja(datos.respuesta, 'maria', datos.video, datos.error === true, true);
+                const botonesNarracion = agregarBurbuja(datos.respuesta, 'maria', datos.video, datos.error === true, true, datos.modelo_3d);
 
-                // El video (si esta respuesta trae uno) ya NO arranca junto
-                // con la narración: MarIA lo presenta hablando primero (con
-                // el avatar) y el video arranca solo hasta que termine de
-                // hablar (ver hablarTexto/audio.onended).
-                hablarTexto(datos.respuesta, botonesNarracion, datos.video);
+                // El video y el modelo 3D (si esta respuesta trae alguno) ya
+                // NO arrancan junto con la narración: MarIA presenta hablando
+                // primero (con el avatar) y el video/modal aparecen solo
+                // hasta que termine de hablar (ver hablarTexto/audio.onended).
+                hablarTexto(datos.respuesta, botonesNarracion, datos.video, datos.modelo_3d);
                 actualizarEstadoAsistente(MENSAJE_ESTADO_IDLE);
             } catch (error) {
                 if (error.name === 'AbortError') {

@@ -206,6 +206,20 @@ if not AZURE_SPEECH_KEY or not AZURE_SPEECH_REGION:
     print("pongas esas variables en el archivo .env.")
     print("=" * 70)
 
+# --- Visor de modelos 3D (Sketchfab) ------------------------------------------
+# Mismo patrón que Groq/Azure: el token vive solo en el servidor, el
+# navegador nunca lo ve. Se usa para buscar (Data API) un modelo 3D
+# relacionado con la pregunta del alumno; el visor (Viewer API) que lo
+# muestra en el frontend no necesita el token, solo el uid del modelo.
+SKETCHFAB_API_TOKEN = os.environ.get("SKETCHFAB_API_TOKEN", "")
+
+if not SKETCHFAB_API_TOKEN:
+    print("=" * 70)
+    print("AVISO: no se encontró SKETCHFAB_API_TOKEN.")
+    print("La búsqueda de modelos 3D NO va a funcionar hasta que")
+    print("pongas esa variable en el archivo .env.")
+    print("=" * 70)
+
 # Memoria de conversación POR SESIÓN (una por salón/pestaña), no global.
 # Con una sola sesión compartida entre todos, las conversaciones de
 # distintos salones/usuarios se mezclarían entre sí. Aquí cada sesión vive
@@ -266,7 +280,20 @@ el video, DEBES incluir al final de tu respuesta EXACTAMENTE esta etiqueta:
 Ejemplo: "El sistema solar es fascinante. Veamos este video para entenderlo mejor. [VIDEO: video_001.mp4]"
 
 Si preguntan algo que no está en el catálogo, explícalo con tus propias palabras y anímalos
-a seguir aprendiendo, sin usar la etiqueta. Nunca digas que eres una Inteligencia Artificial."""
+a seguir aprendiendo, sin usar la etiqueta. Nunca digas que eres una Inteligencia Artificial.
+
+MODELOS 3D:
+Si el alumno o el profesor te pide EXPLÍCITAMENTE ver un modelo 3D (por ejemplo: "¿tienes un
+modelo 3D del corazón?", "muéstrame en 3D la Mona Lisa", "¿hay algún modelo 3D de una célula
+vegetal?"), responde brevemente y agrega al final de tu respuesta EXACTAMENTE esta etiqueta,
+con el término de búsqueda TRADUCIDO AL INGLÉS (los modelos 3D se encuentran mucho mejor en
+inglés que en español):
+[MODELO3D: término en inglés]
+Ejemplo: "Claro, aquí tienes un modelo 3D del corazón humano. [MODELO3D: human heart]"
+
+IMPORTANTE: NUNCA uses esta etiqueta si no te lo piden de forma explícita y directa. No la
+agregues solo porque el tema se preste para un modelo 3D - la gran mayoría de tus respuestas
+NO deben llevar esta etiqueta, solo cuando pidan ver un modelo 3D de verdad."""
 
 
 # Forma esperada del JSON que manda el navegador al preguntarle algo a MarIA.
@@ -327,6 +354,18 @@ async def conversar(mensaje: MensajeAlumno):
                 if nombre_propuesto in nombres_validos:
                     video_detectado = nombre_propuesto
 
+            # Igual que [VIDEO:...], pero para modelos 3D de Sketchfab: solo
+            # aparece cuando el prompt (ver construir_instrucciones) detectó
+            # una petición EXPLÍCITA de ver un modelo 3D. Aquí ya buscamos de
+            # una vez en Sketchfab, para mandarle al frontend el modelo listo
+            # (uid + crédito) en vez de un segundo viaje a /api/modelo-3d.
+            modelo_3d_detectado = None
+            if "[MODELO3D:" in texto_maria:
+                partes = texto_maria.split("[MODELO3D:")
+                texto_maria = partes[0].strip()
+                termino_3d = partes[1].replace("]", "").strip()
+                modelo_3d_detectado = await buscar_modelo_3d(termino_3d)
+
             # Guardamos la respuesta en el historial de la sesión, para que
             # la siguiente pregunta del mismo alumno tenga memoria de esto.
             # Guardamos el texto CON la etiqueta [VIDEO:...] tal como salió,
@@ -336,6 +375,7 @@ async def conversar(mensaje: MensajeAlumno):
             return JSONResponse(content={
                 "respuesta": texto_maria,
                 "video": video_detectado,
+                "modelo_3d": modelo_3d_detectado,
                 "sesion_id": sesion_id,
                 "error": False,
             })
@@ -502,6 +542,105 @@ async def sintetizar_voz_con_visemes(texto: str):
         "audio_base64": base64.b64encode(audio_bytes).decode("ascii"),
         "visemes": visemes,
     })
+
+
+async def buscar_modelos_3d(tema: str, limite: int = 6) -> list[dict]:
+    """
+    Busca en la Data API de Sketchfab modelos 3D relacionados con `tema` y
+    regresa hasta `limite`, ya filtrados y con solo lo que necesita el
+    frontend (uid para el Viewer API, crédito al autor). Pide más resultados
+    de los que regresa (count=24) para poder saltarse los marcados como
+    restringidos por edad sin quedarse corto.
+
+    OJO: la búsqueda funciona notablemente mejor en inglés que en español
+    (probado a mano antes de escribir esto: "human heart" trae modelos con
+    muchas más vistas/mejor curados que "corazón humano", y "computer" es
+    bastante mejor que "computadora"). Este helper NO traduce nada, recibe
+    el término tal cual se lo manden.
+    """
+    encabezados = {"Authorization": f"Token {SKETCHFAB_API_TOKEN}"}
+    parametros = {"type": "models", "q": tema, "count": 24}
+
+    async with httpx.AsyncClient(timeout=15.0) as cliente_http:
+        try:
+            respuesta = await cliente_http.get(
+                "https://api.sketchfab.com/v3/search", headers=encabezados, params=parametros
+            )
+        except httpx.RequestError as e:
+            print(f"No se pudo contactar a Sketchfab: {e}")
+            return []
+
+    if respuesta.status_code != 200:
+        print(f"Sketchfab regresó {respuesta.status_code}: {respuesta.text[:300]}")
+        return []
+
+    resultados = respuesta.json().get("results", [])
+    modelos = []
+
+    for r in resultados:
+        # Nunca mostrar a los alumnos contenido marcado como restringido por edad.
+        if r.get("isAgeRestricted"):
+            continue
+
+        miniaturas = (r.get("thumbnails") or {}).get("images") or []
+        miniatura_url = miniaturas[0]["url"] if miniaturas else None
+
+        modelos.append({
+            "uid": r.get("uid"),
+            "nombre": r.get("name"),
+            "autor": (r.get("user") or {}).get("displayName"),
+            "licencia": (r.get("license") or {}).get("label"),
+            "miniatura": miniatura_url,
+        })
+
+        if len(modelos) >= limite:
+            break
+
+    return modelos
+
+
+async def buscar_modelo_3d(tema: str) -> dict | None:
+    """
+    El mejor resultado para `tema` (lo usa /api/chat: MarIA solo quiere UNO
+    para mostrarlo directo). Envoltorio de buscar_modelos_3d con limite=1.
+    """
+    modelos = await buscar_modelos_3d(tema, limite=1)
+    return modelos[0] if modelos else None
+
+
+@app.get("/api/modelo-3d")
+async def obtener_modelo_3d(tema: str):
+    """
+    Prototipo: busca un modelo 3D relacionado con `tema` en Sketchfab y
+    regresa sus datos para que el frontend lo pueda embeber con el Viewer
+    API. Recibe el término de búsqueda ya armado tal cual (sin traducir).
+    """
+    if not SKETCHFAB_API_TOKEN:
+        raise HTTPException(
+            status_code=500,
+            detail="Falta configurar la variable de entorno SKETCHFAB_API_TOKEN."
+        )
+
+    modelo = await buscar_modelo_3d(tema)
+    if modelo is None:
+        return JSONResponse(content={"encontrado": False, "modelo": None})
+
+    return JSONResponse(content={"encontrado": True, "modelo": modelo})
+
+
+# A diferencia de /api/modelo-3d (un solo resultado, para el chat), este
+# regresa varios: lo usa el panel "Modelos 3D" de la columna izquierda,
+# donde el profe busca a mano y elige de una lista cuál ver.
+@app.get("/api/modelos-3d")
+async def obtener_modelos_3d(tema: str):
+    if not SKETCHFAB_API_TOKEN:
+        raise HTTPException(
+            status_code=500,
+            detail="Falta configurar la variable de entorno SKETCHFAB_API_TOKEN."
+        )
+
+    modelos = await buscar_modelos_3d(tema, limite=6)
+    return JSONResponse(content={"resultados": modelos})
 
 
 # Sirve la página principal (biblioteca + reproductor + análisis + chat de voz).
